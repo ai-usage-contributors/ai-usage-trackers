@@ -1,0 +1,52 @@
+SYNTHETIC QUOTA REPORTS - reviewed 2026-11-11
+
+0.18.0 integration cases are also authored inline in ProviderIntegrationTest.kt.
+Those synthetic Claude assistant records follow the message/usage transcript
+contract exposed by the official hooks documentation and token category rules;
+Antigravity captures follow documented stream-json DONE step usage. No prompt or
+real subscriber data is copied. Cache/thinking fields deliberately overlap totals.
+https://code.claude.com/docs/en/hooks
+https://antigravity.google/docs/cli/headless/
+The latter explicitly describes per-step usage separately from cumulative result
+usage; tests exclude ACTIVE and result records. Helper arrival time supplies the
+step completion timestamp, not a fabricated provider timestamp.
+
+https://github.com/harbor-framework/harbor/issues/2685
+Versioned Antigravity CLI transcript incompatibility report, acknowledged/closed
+by a repository collaborator, reinforces that native step logs differ from old
+Gemini logs. Subscription ownership is not established here; supplementary only.
+Native step-log parsing is deliberately not admitted on that evidence alone.
+
+All numeric values and dates in these fixtures are synthetic. These files are
+not subscribers' private logs and contain no account identities or credentials.
+
+Authoritative field contracts:
+https://code.claude.com/docs/en/statusline
+rate_limits.five_hour / seven_day: used_percentage (0..100), resets_at (epoch).
+https://antigravity.google/docs/cli/statusline/
+quota map: remaining_fraction or remaining_amount, reset_time and disabled.
+The context_window fields deliberately disagree with quota to detect accidental
+use of context occupancy as subscription entitlement.
+
+Corroborating subscriber reports (behavioral cases, not API contracts):
+https://github.com/pingdotgg/t3code/issues/30310
+An explicitly identified Pro subscriber reports Claude Code 2.1.306 and versioned
+reproductions. Further reports identify Team seats and newer CLI versions. Strong
+evidence for optional/missing utilization and the need to keep model context,
+quota and freshness separate; independent subscription ownership is not verified.
+https://github.com/anthropics/claude-code/issues/91857
+Versioned claude.ai subscription/ACP report corroborates per-window rather than
+top-level utilization and the absence of an idle zero-token event path.
+These undocumented SDK shapes are not accepted as documented status-line input.
+https://github.com/pingdotgg/t3code/issues/16104
+Versioned CLI observations and maintainer-linked fixes corroborate separate
+Gemini and Claude/GPT pools, five-hour/weekly distinctions and account-attribution
+risks. This report alone does not verify subscription ownership; use its shapes
+only where the official contract independently agrees. Do not implement its
+private endpoints, proxy or model-probe approaches.
+
+Confidence: high in official field shapes; corroborated, self-reported client
+behavior. No claim that a public poster's paid subscription was independently
+authenticated. Unknown Antigravity weekly anchoring remains unknown even if an
+ID says "weekly". Fixtures do not establish live freshness, complete token
+history, native Air chat support or current vendor-account behavior.

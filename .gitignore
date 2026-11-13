@@ -1,0 +1,26 @@
+.gradle/
+.kotlin/
+.intellijPlatform/
+.idea/
+build/
+agent-logs/
+out/
+*.iml
+local.properties
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Local implementation records can contain prompts and machine-specific paths.
+/IMPLEMENTATION_HANDOFF.txt
+/VALIDATION_STATUS.txt
+/SECURITY_CODE_REVIEW_*.txt
+/plans/

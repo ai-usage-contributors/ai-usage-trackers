@@ -1,0 +1,72 @@
+ADDING A BUILT-IN USAGE PROVIDER
+
+AI Usage Trackers production code is in src/main/kotlin/local/aiusagetrackers/;
+tests use the matching src/test/kotlin/local/aiusagetrackers/ package directory.
+
+The initial registry uses Codex's compatibility collector, Claude native assistant
+messages, and documented Antigravity captured DONE steps. UsageSource is the small
+normalization boundary: parse one supported JSON object into timestamped token
+facts and/or quota reports. It performs no network, UI or storage work. Register
+a new adapter in UsageSourceRegistry and add its canonical UsageVendor identifier.
+General vendor rows and selectors derive from those identities. No binary plugin
+ABI, reflection loader or arbitrary user-supplied adapter code is required.
+
+Minimal test example:
+  object : UsageSource {
+    override val vendor = UsageVendor.CLAUDE
+    override fun parse(row: JsonObject, capturedAt: Instant, profile: ProviderProfile)
+      = ProviderBatch(tokens = listOf(ProviderTokenEvent("synthetic-request",
+          Instant.parse("2026-11-11T12:00:00Z"), RequestCounters(120, 100, null, 20, null))))
+  }
+Keep this kind of fake in tests only; a real adapter must derive IDs and counters
+from its pinned source contract and report its timestamp precision honestly.
+
+Admission requirements:
+- Pin primary field documentation/version and synthetic fixtures. Corroborate
+  behavior with credible first-person subscriber reports, recording confidence
+  and missing verification. Never claim public subscription ownership authenticated.
+- Identify exact token counter overlap; context occupancy is not usage. Separate
+  partial/final/cumulative reports. Stable request/step identity must deduplicate
+  copied logs, retries and subagents. Explain captured versus provider timestamps.
+- Implement bounded/cancellable reads; core commits facts and completed-source
+  snapshot cursor atomically. Malformed or changing files retain previous history
+  and retry. Unknown metadata must never produce fake zeros or allowances.
+- Use one immutable local account reference per ledger. The legacy Codex ledger
+  stays in its original location; new ledgers live under accounts with provider
+  and local account IDs. bindAccount prevents attaching another account to a ledger.
+  Source paths/aliases are explicit mappings, not authenticated billing identities.
+  Read-only snapshots and scans stay on IO threads. Collection enablement is
+  independent of selected display and carousel inclusion.
+- Add only verified quota descriptors. Boundary policy and duration are separate.
+  Unknown weekly anchoring cannot enable fixed-week settings. Fractions normalize
+  at adapter edges; remaining_amount without a denominator is not a percentage.
+  Preserve source observation time separately from acquisition. Cached callbacks
+  do not establish fresh quota; absent observation time means unknown age.
+- Keep estimates optional and policy-specific. Only the existing Codex illustrative
+  estimator/goal policy is admitted; other vendors do not inherit it merely by
+  offering a weekly pool. All fixed-week accounting includes weekends/holidays.
+- Portable v11 bindings export vendor/alias and local logical references only.
+  Remap explicitly on import. Never export paths, credentials, database IDs, raw
+  reports or authentication identities. General display export is optional and
+  cannot enable collection or install callbacks at the destination.
+- Specify supported clients independently. Same-CLI terminal use can share a
+  source configuration; Air chat/ACP, remote/cloud and desktop paths need separate
+  evidence. Model name is not proof of billing vendor or subscription identity.
+
+Coverage in 0.18.0:
+Codex: existing local sessions/archived_sessions collector, legacy quota support.
+Claude: configured native assistant JSONL, nested subagents; optional status-line
+quota capture. Incomplete or conflicting histories are diagnosed and retained.
+Antigravity: explicitly captured documented headless stream-json DONE steps and
+status-line quotas; arrival timestamps disclose reduced precision. Native changing
+step transcripts and interactive/desktop/ACP token coverage are unverified. Generic
+quota pools can be displayed, but weekly-derived features remain unavailable while
+their boundary semantics are unverified. No background provider poll is claimed.
+
+Tests must exercise actual parser-to-ledger totals, reset/time boundaries, duplicate
+identities, account isolation, cancellation, replayed quota, migration backups and
+portable remapping. Add component tests for capability reasons and display state;
+existing inner ribbon behavior must remain isolated from outer carousel movement.
+Run the full validation required in AGENTS.md. Live UI/vendor acceptance needs a
+separate explicit request and matching accounts; synthetic tests cannot prove a
+live balance. Performance measurement remains deferred.

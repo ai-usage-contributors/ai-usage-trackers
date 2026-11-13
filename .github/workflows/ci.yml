@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Tests and plugin verification
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Test capture helper
+        run: python -m unittest discover -s tools/quota-capture -p 'test_*.py'
+      - name: Test, package and verify compatibility
+        run: .\gradlew.bat --no-daemon --stacktrace test buildPlugin verifyPluginConfiguration verifyPlugin
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-reports
+          path: |
+            build/reports/
+            build/test-results/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Upload tested plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-package
+          path: build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 14

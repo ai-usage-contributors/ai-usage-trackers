@@ -1,0 +1,267 @@
+<component name="CodexDailyTokens">
+  <option name="analyticsDisplay">
+    <AnalyticsDisplayOptions>
+      <option name="colorWeeklyQuota" value="false" />
+      <option name="estimateBudget" value="false" />
+      <option name="fiveHourQuotaLabel" value="5h quota" />
+      <option name="fiveHourQuotaStyle" value="" />
+      <option name="fiveHourResetLabel" value="5h reset" />
+      <option name="fiveHourResetStyle" value="" />
+      <option name="fiveHourScope" value="" />
+      <option name="lastRequestLabel" value="Last request" />
+      <option name="lastRequestPercentUsed" value="false" />
+      <option name="lastRequestStyle" value="" />
+      <option name="planProfile" value="Codex — weekly and five-hour" />
+      <option name="quotaPercentMode" value="Percentage used" />
+      <option name="quotaScope" value="" />
+      <option name="showFiveHourQuota" value="false" />
+      <option name="showFiveHourReset" value="false" />
+      <option name="showQuota" value="false" />
+      <option name="showReportedPools" value="false" />
+      <option name="showReset" value="false" />
+      <option name="weeklyQuotaLabel" value="Weekly quota" />
+      <option name="weeklyQuotaStyle" value="" />
+      <option name="weeklyResetLabel" value="Weekly reset" />
+      <option name="weeklyResetStyle" value="" />
+    </AnalyticsDisplayOptions>
+  </option>
+  <option name="display">
+    <DisplayPreferences>
+      <option name="aboveQuotaMultiplier" value="2" />
+      <option name="allTokenPercentUsed" value="false" />
+      <option name="clockFormat" value="24-hour (13:00)" />
+      <option name="coloringEnabled" value="true" />
+      <option name="datePattern" value="yyyy-MM-dd" />
+      <option name="fixedAuxiliary" value="" />
+      <option name="palette" value=",#00FF00,#FFFF00,#FFA500,#FF0000" />
+      <option name="ribbonAutoExpand" value="false" />
+      <option name="ribbonHorizontalStepIntervalSeconds" value="3" />
+      <option name="ribbonScrollMode" value="Restart" />
+      <option name="ribbonSpeed" value="30" />
+      <option name="ribbonVerticalStepDirection" value="Up" />
+      <option name="ribbonVerticalStepIntervalSeconds" value="3" />
+      <option name="ribbonWidth" value="280" />
+      <option name="warningQuotaMultiplier" value="3" />
+      <option name="weeklyPacing" value="false" />
+      <option name="widgetFontSize" value="0" />
+    </DisplayPreferences>
+  </option>
+  <option name="extraHomes">
+    <list />
+  </option>
+  <option name="previewPinned" value="true" />
+  <option name="providers">
+    <ProviderConfiguration>
+      <option name="display">
+        <VendorDisplayState>
+          <option name="carousel" value="false" />
+          <option name="direction" value="Up" />
+          <option name="horizontalSeconds" value="8" />
+          <option name="initialized" value="false" />
+          <option name="members">
+            <list />
+          </option>
+          <option name="motion" value="Vertical step" />
+          <option name="selected" value="Codex" />
+          <option name="speed" value="30" />
+          <option name="verticalSeconds" value="8" />
+        </VendorDisplayState>
+      </option>
+      <option name="profiles">
+        <list>
+          <ProviderProfile>
+            <option name="alias" value="Codex account" />
+            <option name="analytics">
+              <AnalyticsDisplayOptions>
+                <option name="colorWeeklyQuota" value="false" />
+                <option name="estimateBudget" value="false" />
+                <option name="fiveHourQuotaLabel" value="5h quota" />
+                <option name="fiveHourQuotaStyle" value="" />
+                <option name="fiveHourResetLabel" value="5h reset" />
+                <option name="fiveHourResetStyle" value="" />
+                <option name="fiveHourScope" value="" />
+                <option name="lastRequestLabel" value="Last request" />
+                <option name="lastRequestPercentUsed" value="false" />
+                <option name="lastRequestStyle" value="" />
+                <option name="planProfile" value="Codex — weekly only" />
+                <option name="quotaPercentMode" value="Percentage used" />
+                <option name="quotaScope" value="" />
+                <option name="showFiveHourQuota" value="false" />
+                <option name="showFiveHourReset" value="false" />
+                <option name="showQuota" value="false" />
+                <option name="showReportedPools" value="false" />
+                <option name="showReset" value="false" />
+                <option name="weeklyQuotaLabel" value="Weekly quota" />
+                <option name="weeklyQuotaStyle" value="" />
+                <option name="weeklyResetLabel" value="Weekly reset" />
+                <option name="weeklyResetStyle" value="" />
+              </AnalyticsDisplayOptions>
+            </option>
+            <option name="captureDirectory" value="" />
+            <option name="id" value="legacy-codex" />
+            <option name="locations" value="" />
+            <option name="vendor" value="Codex" />
+            <option name="verified" value="true" />
+          </ProviderProfile>
+          <ProviderProfile>
+            <option name="alias" value="Claude account" />
+            <option name="analytics">
+              <AnalyticsDisplayOptions>
+                <option name="colorWeeklyQuota" value="false" />
+                <option name="estimateBudget" value="false" />
+                <option name="fiveHourQuotaLabel" value="5h quota" />
+                <option name="fiveHourQuotaStyle" value="" />
+                <option name="fiveHourResetLabel" value="5h reset" />
+                <option name="fiveHourResetStyle" value="" />
+                <option name="fiveHourScope" value="" />
+                <option name="lastRequestLabel" value="Last request" />
+                <option name="lastRequestPercentUsed" value="false" />
+                <option name="lastRequestStyle" value="" />
+                <option name="planProfile" value="Unverified quota scheme" />
+                <option name="quotaPercentMode" value="Percentage used" />
+                <option name="quotaScope" value="" />
+                <option name="showFiveHourQuota" value="false" />
+                <option name="showFiveHourReset" value="false" />
+                <option name="showQuota" value="false" />
+                <option name="showReportedPools" value="false" />
+                <option name="showReset" value="false" />
+                <option name="weeklyQuotaLabel" value="Weekly quota" />
+                <option name="weeklyQuotaStyle" value="" />
+                <option name="weeklyResetLabel" value="Weekly reset" />
+                <option name="weeklyResetStyle" value="" />
+              </AnalyticsDisplayOptions>
+            </option>
+            <option name="captureDirectory" value="" />
+            <option name="id" value="claude" />
+            <option name="locations" value="" />
+            <option name="vendor" value="Claude" />
+            <option name="verified" value="false" />
+          </ProviderProfile>
+          <ProviderProfile>
+            <option name="alias" value="Antigravity account" />
+            <option name="analytics">
+              <AnalyticsDisplayOptions>
+                <option name="colorWeeklyQuota" value="false" />
+                <option name="estimateBudget" value="false" />
+                <option name="fiveHourQuotaLabel" value="5h quota" />
+                <option name="fiveHourQuotaStyle" value="" />
+                <option name="fiveHourResetLabel" value="5h reset" />
+                <option name="fiveHourResetStyle" value="" />
+                <option name="fiveHourScope" value="" />
+                <option name="lastRequestLabel" value="Last request" />
+                <option name="lastRequestPercentUsed" value="false" />
+                <option name="lastRequestStyle" value="" />
+                <option name="planProfile" value="Unverified quota scheme" />
+                <option name="quotaPercentMode" value="Percentage used" />
+                <option name="quotaScope" value="" />
+                <option name="showFiveHourQuota" value="false" />
+                <option name="showFiveHourReset" value="false" />
+                <option name="showQuota" value="false" />
+                <option name="showReportedPools" value="false" />
+                <option name="showReset" value="false" />
+                <option name="weeklyQuotaLabel" value="Weekly quota" />
+                <option name="weeklyQuotaStyle" value="" />
+                <option name="weeklyResetLabel" value="Weekly reset" />
+                <option name="weeklyResetStyle" value="" />
+              </AnalyticsDisplayOptions>
+            </option>
+            <option name="captureDirectory" value="" />
+            <option name="id" value="antigravity" />
+            <option name="locations" value="" />
+            <option name="vendor" value="Antigravity" />
+            <option name="verified" value="false" />
+          </ProviderProfile>
+        </list>
+      </option>
+      <option name="vendors">
+        <list>
+          <VendorConfiguration>
+            <option name="accountId" value="legacy-codex" />
+            <option name="label" value="" />
+            <option name="tracking" value="true" />
+            <option name="vendor" value="Codex" />
+          </VendorConfiguration>
+          <VendorConfiguration>
+            <option name="accountId" value="claude" />
+            <option name="label" value="" />
+            <option name="tracking" value="false" />
+            <option name="vendor" value="Claude" />
+          </VendorConfiguration>
+          <VendorConfiguration>
+            <option name="accountId" value="antigravity" />
+            <option name="label" value="" />
+            <option name="tracking" value="false" />
+            <option name="vendor" value="Antigravity" />
+          </VendorConfiguration>
+        </list>
+      </option>
+    </ProviderConfiguration>
+  </option>
+  <option name="ribbonWidths">
+    <RibbonWidthStatistics>
+      <option name="average" value="0.0" />
+      <option name="count" value="0" />
+      <option name="maximum" value="0" />
+      <option name="maximumValue" value="" />
+    </RibbonWidthStatistics>
+  </option>
+  <option name="showLastRequest" value="true" />
+  <option name="trackerLimit" value="12" />
+  <option name="trackers">
+    <list>
+      <TrackerDefinition>
+        <option name="accountId" value="legacy-codex" />
+        <option name="amount" value="1" />
+        <option name="anchor" value="2026-01-01T00:00" />
+        <option name="colorByQuotaGoal" value="false" />
+        <option name="endAnchor" value="Now" />
+        <option name="endOffset" value="0" />
+        <option name="endTime" value="" />
+        <option name="fixedEnd" value="" />
+        <option name="fixedStart" value="" />
+        <option name="hideLabel" value="false" />
+        <option name="id" value="today" />
+        <option name="includeCurrent" value="true" />
+        <option name="mode" value="Calendar periods" />
+        <option name="name" value="My daily total" />
+        <option name="quotaPoolId" value="" />
+        <option name="ribbonPlacement" value="AUTOMATIC" />
+        <option name="selection" value="All days" />
+        <option name="showPercentUsed" value="false" />
+        <option name="showPeriodStart" value="false" />
+        <option name="startTime" value="00:00" />
+        <option name="style" value="" />
+        <option name="unit" value="Days" />
+        <option name="visible" value="true" />
+        <option name="zoneId" value="" />
+      </TrackerDefinition>
+      <TrackerDefinition>
+        <option name="accountId" value="legacy-codex" />
+        <option name="amount" value="1" />
+        <option name="anchor" value="2026-01-01T00:00" />
+        <option name="colorByQuotaGoal" value="false" />
+        <option name="endAnchor" value="Now" />
+        <option name="endOffset" value="0" />
+        <option name="endTime" value="" />
+        <option name="fixedEnd" value="" />
+        <option name="fixedStart" value="" />
+        <option name="hideLabel" value="false" />
+        <option name="id" value="week" />
+        <option name="includeCurrent" value="true" />
+        <option name="mode" value="Calendar periods" />
+        <option name="name" value="This week" />
+        <option name="quotaPoolId" value="" />
+        <option name="ribbonPlacement" value="AUTOMATIC" />
+        <option name="selection" value="All days" />
+        <option name="showPercentUsed" value="false" />
+        <option name="showPeriodStart" value="false" />
+        <option name="startTime" value="00:00" />
+        <option name="style" value="" />
+        <option name="unit" value="Weeks" />
+        <option name="visible" value="true" />
+        <option name="zoneId" value="" />
+      </TrackerDefinition>
+    </list>
+  </option>
+  <option name="widgetAnchor" value="before OtherWidget" />
+</component>

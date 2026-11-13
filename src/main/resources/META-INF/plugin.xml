@@ -1,0 +1,18 @@
+<idea-plugin>
+    <id>local.codexusage.daily</id>
+    <name>AI Usage Trackers</name>
+    <vendor>AI Usage Trackers contributors</vendor>
+    <description><![CDATA[
+        Track locally recorded AI token usage with persistent history and configurable status-bar trackers.
+        Includes Codex logs, Claude assistant logs and supported Antigravity capture files.
+        Choose calendar periods, elapsed durations or supported provider reset-aligned weeks.
+        Shows recorded request usage and quota percentages/reset times where available.
+        Reads local logs and capture files without model calls or telemetry; coverage depends on the source.
+    ]]></description>
+    <depends>com.intellij.modules.platform</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory id="CodexDailyTokens" implementation="local.aiusagetrackers.UsageWidgetFactory"/>
+        <applicationConfigurable id="local.codexusage.daily.settings" displayName="AI Usage Trackers"
+                                 instance="local.aiusagetrackers.UsageConfigurable"/>
+    </extensions>
+</idea-plugin>
