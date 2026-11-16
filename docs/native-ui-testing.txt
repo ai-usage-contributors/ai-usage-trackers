@@ -676,9 +676,15 @@ matrices must still distinguish owner reports, controlled runs and automated che
 
 
 10. N09 - FIRST-LOAD AGREEMENT AND METADATA LINKS - 1.0.0 (2026-11-16)
-Status: PENDING native execution; planned expectations only, no observed UI pass.
-Candidate source: local agreement implementation; final artifact hash to be recorded.
-IDE/OS/display/input/fixtures: not executed or observed for this candidate.
+Status: USER-TESTED (owner-reported local installed-plugin testing, 2026-11-16).
+Evidence: owner reports "Tested the plugin locally, mark it as USER-TESTED" and
+considers the plugin ready for publication. This accepts the reported functional
+scope; it is not a controlled agent replay or proof of every listed subvariant.
+USER-TESTED is the owner-report tier; historical USER-PASS entries retain their meaning.
+Candidate source and generated artifact hashes are recorded below. The owner did
+not supply an independently verified installed-artifact hash or detailed run environment.
+IDE/OS/display/input/fixtures: owner local IDE; exact build, fixtures and environment not supplied.
+The Given/When/Then expectations below remain the planned controlled test scope.
 Given a fresh profile or an upgrade without the local agreement revision,
 when the widget first loads, then one popup per IDE session offers the Privacy
 Policy, Agree and Enable, and Not Now. No usage scan or database opening precedes
@@ -701,4 +707,9 @@ Unsigned ZIP SHA256: EE68EE8F768932EE856CE3D9859C5697F914EE30123F514DCBC6DF04962
 Source: f501dd7d67d23cdc00918ae8011d518339f24614 plus local changes identified by
 agent-logs/consent-source-manifest.csv. Build evidence: agent-logs/consent-final-validation.log;
 signature evidence: agent-logs/consent-signature-validation.log. No native UI execution
-for N09; environment and observations remain pending. Earlier results are retained.
+by the agent for N09. Owner-reported USER-TESTED supersedes its pending owner validation;
+individual controlled subvariants are not inferred executed. Earlier results are retained.
+
+Observed owner result: local installed plugin tested; owner requests USER-TESTED
+and reports readiness for publication. No new defects reported. Independent screen-reader
+verification remains blocked as previously recorded; no such result is inferred.

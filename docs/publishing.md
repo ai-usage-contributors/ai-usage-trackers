@@ -36,6 +36,14 @@ Hosted execution must be validated after upload; IntelliJ inspections remain sep
 
 ## Marketplace preparation
 
+Release validation status (2026-11-16): the owner reports local installed-plugin
+testing, requests USER-TESTED status and considers the plugin ready for submission.
+The agreement flow is recorded at that tier in native-ui-testing.txt section10.
+Automated checks and signature verification passed for the recorded candidate.
+This does not establish a full controlled native matrix or Marketplace approval;
+the independently blocked screen-reader variant remains recorded. Vendor/listing
+setup and JetBrains submission/review remain separate publishing steps.
+
 The [official upload guide](https://plugins.jetbrains.com/docs/marketplace/uploading-a-new-plugin.html)
 describes login, vendor profile creation, Developer Agreement acceptance and
 submission. A license/EULA is required; open-source listings need a source URL.

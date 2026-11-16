@@ -767,9 +767,10 @@ partial destination.
 The local-processing agreement candidate has 260 passing automated tests, clean
 changed-file IntelliJ inspections, successful packaging/configuration checks and
 IDEA 2026.3 compatibility verification. Its signed ZIP passed signature verification.
-Native first-load popup and agreement lifecycle scenario N09 remains pending in
-[the acceptance record](docs/native-ui-testing.txt); earlier USER-PASS results do
-not establish execution of this new flow.
+The owner reports local installed-plugin testing and marks the agreement flow
+USER-TESTED on 2026-11-16; see [the acceptance record](docs/native-ui-testing.txt).
+This records owner functional acceptance separately from controlled agent execution;
+exact installed-artifact identity and individual subvariants were not independently verified.
 
 ### 12.1 Coverage and interpretation
 
