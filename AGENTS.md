@@ -6,8 +6,6 @@
   Provide tooltips on both the setting label and its input/control, including nested
   editable controls, and provide equivalent accessible descriptions.
 - Read IMPLEMENTATION_HANDOFF.txt before implementation.
-- Keep the plugin version at 1.0.0 until the user explicitly requests a version
-  change. Do not increment it automatically for updates or builds.
 - Work in this repository; keep the upstream Codex Usage checkout unchanged.
 - Verify existing code references with tool output; verify line numbers before citing them.
 - Keep README.md and TECHNICAL.md current when behavior, requirements, settings,
