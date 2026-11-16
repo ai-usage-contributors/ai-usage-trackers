@@ -10,6 +10,10 @@ version = "1.0.0"
 
 repositories {
     mavenCentral()
+    maven("https://cache-redirector.jetbrains.com/repo1.maven.org/maven2") {
+        name = "JetBrainsSigningToolMirror"
+        content { includeModule("org.jetbrains", "marketplace-zip-signer") }
+    }
     intellijPlatform {
         defaultRepositories()
     }
@@ -23,6 +27,7 @@ dependencies {
         val developmentIdePath = providers.gradleProperty("runIdePath").orNull
         if (developmentIdePath != null) local(file(developmentIdePath)) else intellijIdea("2026.3")
         pluginVerifier("1.411")
+        zipSigner("0.1.45")
     }
     testImplementation(kotlin("test"))
 }
@@ -43,6 +48,14 @@ tasks.processResources {
 
 tasks.named("verifyPlugin") {
     mustRunAfter(tasks.test)
+}
+
+tasks.named("verifyPluginSignature") {
+    mustRunAfter("signPlugin")
+}
+
+tasks.named("verifyPluginSignature") {
+    mustRunAfter("signPlugin")
 }
 
 tasks.test {
@@ -79,6 +92,11 @@ tasks.register<Test>("performanceBaseline") {
 }
 
 intellijPlatform {
+    signing {
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
     pluginVerification {
         ides {
             val verificationIdePath = providers.gradleProperty("verificationIdePath").orNull

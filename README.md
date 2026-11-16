@@ -10,6 +10,12 @@ For technical details, see [TECHNICAL.md](TECHNICAL.md).
 
 For building and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Usage data stays local; the plugin does not send it to servers. See the
+[Privacy Policy](PRIVACY.md) for data handling and deletion information.
+
+Usage data stays local; the plugin does not send it to servers. See the
+[Privacy Policy](PRIVACY.md) for data handling and deletion information.
+
 ## Screenshots
 
 ![Widget with the quota tooltip open](docs/screenshots/widget-quota-tooltip.png)
@@ -145,4 +151,4 @@ See [Third-party notices](THIRD_PARTY_NOTICES.txt) for acknowledgements and lice
 ## Support
 
 Report problems or request features in the
-[GitHub issue tracker](https://github.com/andrasballai-guidance/ai-usage-trackers/issues).
+[GitHub issue tracker](https://github.com/ai-usage-contributors/ai-usage-trackers/issues).

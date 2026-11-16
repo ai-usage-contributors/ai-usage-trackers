@@ -137,7 +137,7 @@ Values below come from [build.gradle.kts](build.gradle.kts),
 | --- | --- |
 | Plugin name / ID | AI Usage Trackers / `local.codexusage.daily` |
 | Vendor contact | `ai.usage.contributors@gmail.com` |
-| Project / support | [Public repository](https://github.com/andrasballai-guidance/ai-usage-trackers) / [issues](https://github.com/andrasballai-guidance/ai-usage-trackers/issues) |
+| Project / support | [Public repository](https://github.com/ai-usage-contributors/ai-usage-trackers) / [issues](https://github.com/ai-usage-contributors/ai-usage-trackers/issues) |
 | Widget factory ID | `CodexDailyTokens` |
 | Settings page / ID | **AI Usage Trackers** / `local.codexusage.daily.settings` |
 | Gradle project / group | `ai-usage-trackers` / `local.aiusagetrackers` |
@@ -148,6 +148,7 @@ Values below come from [build.gradle.kts](build.gradle.kts),
 | JVM toolchain | JDK `25` |
 | Kotlin JVM / IntelliJ Platform Gradle plugin | `2.4.0` / `2.19.0` |
 | Gradle wrapper | `9.5.0` |
+| Optional archive signing | Marketplace ZIP Signer `0.1.45`, with Maven Central first and JetBrains' Maven cache as a fallback restricted to this module. Environment-based credentials and commands: [publishing](docs/publishing.md#signing-and-future-automation). Tool setup does not sign a release. |
 | Bundled SQLite JDBC | `3.54.1.0`, excluding its SLF4J API dependency |
 | Platform-supplied facilities | Gson, coroutines, logging, Swing, and IntelliJ APIs |
 | Optional capture helper | Python `3.10+`; filesystem must support atomic hard-link publication |
@@ -282,6 +283,10 @@ The plugin version remains 1.0.0; no collection/runtime behavior changes.
 ## 6. Database and persistence
 
 ### 6.1 Location and ownership
+
+The [Privacy Policy](PRIVACY.md) describes local processing, retained data,
+user-controlled exports, and deletion. The plugin and capture helper do not
+transmit usage data to ai-usage-contributors or third-party servers.
 
 The legacy Codex database remains at
 `<IDE configuration directory>/codexUsage/usage.sqlite`. Additional databases use
