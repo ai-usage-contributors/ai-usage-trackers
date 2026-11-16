@@ -9,7 +9,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.time.Instant
 
 class ProviderUsageCollector(private val database: UsageDatabase) {
-    fun collect(profile: ProviderProfile, now: Instant, checkCancelled: () -> Unit = {}) {
+    fun collect(profile: ProviderProfile, now: Instant, checkCancelled: () -> Unit = {}, completionTime: () -> Instant = { now }) {
         database.bindAccount(profile)
         val issues = mutableSetOf<String>()
         val files = linkedSetOf<Path>()
@@ -39,7 +39,7 @@ class ProviderUsageCollector(private val database: UsageDatabase) {
             })
         }
         files.forEach { importFile(it, profile, issues, checkCancelled) }
-        database.recordScan(roots.size, files.size, issues, now)
+        database.recordScan(roots.size, files.size, issues, completionTime())
     }
 
     private fun importFile(

@@ -30,6 +30,8 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Test capture helper
         run: python -m unittest discover -s tools/quota-capture -p 'test_*.py'
+      - name: Test synthetic usage generator
+        run: python -m unittest discover -s tools/synthetic-usage -p 'test_*.py'
       - name: Test, package and verify compatibility
         run: .\gradlew.bat --no-daemon --stacktrace test buildPlugin verifyPluginConfiguration verifyPlugin
       - name: Upload verification reports

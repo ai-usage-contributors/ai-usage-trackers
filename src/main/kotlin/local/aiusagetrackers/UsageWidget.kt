@@ -46,7 +46,9 @@ class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposa
     private fun update() {
         val config = service<UsageSettings>().providers
         val visible = config.display.visible(config.eligible())
-        for (vendor in visible) views.getOrPut(vendor) { VendorUsageWidget(project, vendor) }.updatePresentation()
+        for (vendor in visible) views.getOrPut(vendor) {
+            VendorUsageWidget(project, vendor, carousel::navigate)
+        }.updatePresentation()
         carousel.paused =
             { views.values.any { it.hasOpenPopup() } || MenuSelectionManager.defaultManager().selectedPath.isNotEmpty() }
         carousel.configure(visible.associateWith { views.getValue(it).component }, config.display)
@@ -72,7 +74,7 @@ class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposa
     }
 }
 
-private class VendorUsageWidget(private val project: Project, private val vendor: UsageVendor) : CustomStatusBarWidget,
+private class VendorUsageWidget(private val project: Project, private val vendor: UsageVendor, navigate: (Int) -> Unit) : CustomStatusBarWidget,
     Disposable {
     private var transitioning = false
     fun pauseForTransition(value: Boolean) {
@@ -95,7 +97,9 @@ private class VendorUsageWidget(private val project: Project, private val vendor
     private var renderedPins: Set<String> = emptySet()
     private val usage get() = service<UsageService>()
     private val settings get() = service<UsageSettings>()
-    private val textButton = object : JButton("loading") {
+    private val textButton = object : AgentLabelButton(
+        { settings.providers.display.motion == RibbonScrollMode.VERTICAL_STEP }, navigate
+    ) {
         override fun getPreferredSize(): Dimension = super.getPreferredSize().apply {
             // The themed JButton UI reserves a minimum width for ordinary dialog buttons.
             // Status text needs only its measured text width, even for short totals.
@@ -148,6 +152,7 @@ private class VendorUsageWidget(private val project: Project, private val vendor
         val display = settings.display
         val values = WidgetText.values(snapshot, display, settings.showLastRequest, options)
         textButton.text = "${config.label(vendor)}:"
+        textButton.foreground = WidgetAppearance.foreground()
         textButton.accessibleContext.accessibleName = "${config.label(vendor)} usage actions"
         val widgetFont = WidgetAppearance.font(display, textButton.font)
         val fontChanged = textButton.font != widgetFont
@@ -171,7 +176,8 @@ private class VendorUsageWidget(private val project: Project, private val vendor
         if (fontChanged) {
             panel.revalidate(); panel.repaint()
         }
-        textButton.toolTipText = "Open usage actions, settings, and detailed information for the displayed trackers."
+        textButton.toolTipText = "Click for usage actions. Scroll or drag this label to change agents; Alt+Left/Right also cycles agents while hovering the widget."
+        textButton.accessibleContext.accessibleDescription = textButton.toolTipText
         updateWarningButton(snapshot, values, config.label(vendor))
     }
 

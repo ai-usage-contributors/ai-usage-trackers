@@ -1,5 +1,10 @@
 SYNTHETIC QUOTA REPORTS - reviewed 2026-11-11
 
+Claude and Antigravity support is experimental. These fixtures and passing tests
+support theoretical implementations only. Contributors with subscriptions must
+validate real usage/capture and quota behavior before verified support can be
+claimed; see TECHNICAL.md section 5.
+
 0.18.0 integration cases are also authored inline in ProviderIntegrationTest.kt.
 Those synthetic Claude assistant records follow the message/usage transcript
 contract exposed by the official hooks documentation and token category rules;

@@ -1,5 +1,10 @@
 OPTIONAL VENDOR CAPTURE - CONTRACT v1
 
+EXPERIMENTAL: Claude and Antigravity support is theoretically implemented and
+passes synthetic tests. Contributors with subscriptions must validate real logs,
+capture setup, totals and quota/reset readings before verified support can be
+claimed. See TECHNICAL.md section 5. Never share subscription credentials.
+
 Prerequisite: Python 3.10+ available as python3 (or python on Windows). This helper
 does not launch an agent, invoke a model, read authentication files or access a
 network endpoint. The plugin only reads its sanitized .jsonl output. Choose a
@@ -46,11 +51,17 @@ timestamp. Request details disclose this precision. Headless-only capture does
 not cover ordinary interactive/desktop/ACP token traffic. Native step transcripts
 are not parsed speculatively: their schema differs across CLI versions.
 
-Files contain only required quota fields or step ID/counters and capture time.
+Files contain only typed quota fields or validated step IDs/counters and capture time.
 No prompt, response text, working directory, email, access token or settings file
 is retained. Publication is atomic on filesystems supporting local hard links;
-errors leave existing captures unchanged. Cached identical payloads retain their
-first capture time. Keep captures on a local filesystem with hard-link support.
+errors leave existing captures unchanged. Repeated DONE steps retain their first
+capture time. Quota acquisitions preserve their ordering, including a return to
+an earlier value after an intervening change. The plugin coalesces consecutive
+identical quota values and retains the first acquisition time of each run.
+Keep captures on a local filesystem with hard-link support. After upgrading the
+plugin, export the helper again and replace your existing capture.py to use its
+updated validation and acquisition handling. Imported history remains in the
+plugin database if old capture files are removed.
 Interrupted writes leave only ignored .tmp files, which can be removed manually.
 
 Quota reports without a documented provider observation time ALWAYS show unknown

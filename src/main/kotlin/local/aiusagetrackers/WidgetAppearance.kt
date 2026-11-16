@@ -6,6 +6,9 @@ import java.awt.Font
 import javax.swing.UIManager
 
 object WidgetAppearance {
+    /** Resolve dynamic theme colors now so cached rendering detects later theme changes. */
+    fun foreground(): Color = Color(com.intellij.util.ui.UIUtil.getLabelForeground().rgb, true)
+
     fun usesHtml(value: StatusValue): Boolean = value.quotaColorEnabled || value.palette?.let { UsagePalette.parse(it).neutral != null } == true
     fun font(preferences: DisplayPreferences, fallback: Font): Font {
         val base = UIManager.getFont("Label.font") ?: fallback

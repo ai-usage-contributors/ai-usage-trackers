@@ -1,6 +1,14 @@
 # GitHub and Marketplace preparation
 
-Research checked on 2026-11-12. No remote repository or listing was created.
+Research checked on 2026-11-12. The project is now public at
+[GitHub](https://github.com/andrasballai-guidance/ai-usage-trackers).
+Marketplace account and listing state have not been verified here.
+
+Claude and Antigravity support must be labelled experimental in the listing,
+release notes and screenshots/captions. Theoretical implementations and passing
+synthetic tests do not establish real-subscription support. Contributors with
+subscriptions must validate the scope described in TECHNICAL.md section 5 before
+verified support can be claimed.
 
 ## GitHub setup
 
@@ -20,8 +28,8 @@ Research checked on 2026-11-12. No remote repository or listing was created.
 
 CI runs helper tests and the ordinary Gradle test suite, builds the ZIP and runs
 configuration/compatibility checks on Windows with JDK 25 and Python 3.13.
-Compatibility targets are the two downloadable IDEA versions in build.gradle.kts.
-Use `-PverificationIdePath="<IDE directory>"` for an additional local IDE.
+Compatibility targets IDEA 2026.3 only (build 263 through 263.*).
+Use `-PverificationIdePath="<IDE directory>"` to verify an installed 2026.3 IDE instead.
 No native UI or performance tests run. Existing PerformanceBaselineTest remains
 excluded from ordinary tests. CI is not proof of Linux/macOS runtime acceptance.
 Hosted execution must be validated after upload; IntelliJ inspections remain separate.
@@ -36,14 +44,18 @@ hidden listing for controlled availability.
 
 Before submission:
 
-- MIT is selected. Choose the publishing identity, support contact and free/paid
-  model; those owner decisions remain pending.
-- Add actual repository/support URLs once available; preserve the current plugin ID.
-- Prepare an icon, screenshots without personal data, description and release notes.
-  Review branding and provider trademark usage.
-- Run CONTRIBUTING.md checks and IntelliJ inspections. Explicitly verify an available
-  263 IDE before advertising that part of the declared compatibility range.
-  Review deferred native acceptance and confirmed limitations in TECHNICAL.md.
+- MIT is selected. The plugin metadata retains AI Usage Trackers contributors as
+  vendor, with public email ai.usage.contributors@gmail.com.
+  Confirm the Marketplace vendor profile and free/paid model.
+- Version 1.0.0 includes public repository/support/documentation/license URLs,
+  an expanded description and release notes; the plugin ID is unchanged.
+- Light/dark chart logos and Lucide license notices are included. The supplied widget screenshots are in [screenshots](screenshots/); review branding and provider trademark usage.
+- Run CONTRIBUTING.md checks and IntelliJ inspections. Verify IDEA 2026.3 before publishing.
+  Complete and record the authorized native release scope using the
+  [test plan](native-ui-test-plan.txt) and [versioned testing record](native-ui-testing.txt).
+  Expand that scope for new features each release. Keep pending, blocked and
+  experimental subscriber acceptance explicit; do not present historical passes
+  as passes for the release candidate. See TECHNICAL.md for coverage limitations.
 - Review dependency licensing, preserve third-party notices and include the selected
   project license in the distributed code/package.
 - Manually upload the buildPlugin ZIP from build/distributions. No publishing

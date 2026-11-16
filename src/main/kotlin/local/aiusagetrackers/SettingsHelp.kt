@@ -133,8 +133,24 @@ class SettingHelpCell(private val label: JComponent, val control: JComponent) : 
     }
 }
 
+/** UI labels remain separate from enum strings used by persisted settings. */
+fun providerChoiceRenderer(): DefaultListCellRenderer = object : DefaultListCellRenderer() {
+    override fun getListCellRendererComponent(list: JList<*>?, value: Any?, index: Int, selected: Boolean, focus: Boolean): Component {
+        putClientProperty("html.disable", true)
+        val text = when (value) {
+            is UsageVendor -> value.presentationLabel
+            is QuotaPlanProfile -> value.presentationLabel
+            else -> value
+        }
+        return super.getListCellRendererComponent(list, text, index, selected, focus)
+    }
+}
+
 /** Preserve popup models on unrelated edits; callers guard their own selection listeners. */
 fun <T> updateSettingsChoices(combo: JComboBox<T>, choices: List<T>, selected: T?) {
+    if (choices.any { it is AccountChoice }) {
+        combo.renderer = DefaultListCellRenderer().apply { putClientProperty("html.disable", true) }
+    }
     if ((0 until combo.itemCount).map(combo::getItemAt) != choices) {
         combo.model = DefaultComboBoxModel<T>().apply {
             choices.forEach(::addElement)

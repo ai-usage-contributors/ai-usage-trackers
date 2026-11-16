@@ -1,6 +1,6 @@
 # AI Usage Trackers — technical reference
 
-This describes implementation version **1.0.0**, reviewed on **2026-11-13**.
+This describes implementation version **1.0.0**, reviewed on **2026-11-16**.
 Source links identify the implementation; external links explain terminology and
 provider contracts. Historical release notes describe earlier behavior, not
 additional current features.
@@ -67,6 +67,10 @@ run on the `EDT`. Cancellation propagates through parsing and transactions;
 disposal closes connections, stops presentation timers, and releases the plugin's
 JDBC driver registrations.
 
+Both collectors sample the monitor's completion clock when recording a completed
+scan. Collection timestamps and reset durations therefore use completion time,
+including when a long scan crosses a quota reset.
+
 | Schedule | Current implementation |
 | --- | --- |
 | Account configuration reconciliation | Every 250 ms; starts or cancels monitors as collection eligibility changes. |
@@ -81,13 +85,16 @@ is [adding-a-provider.txt](docs/adding-a-provider.txt).
 
 ## 3. Definitions
 
+`USER-PASS` means the owner reports expected behavior while using the installed plugin in the IDE; it is separate from automated checks and controlled agent-run native acceptance (section 12.2).
+
 These are project meanings where they narrow a broader industry term. Backticks
 highlight domain terms and code identifiers; bold text identifies UI labels.
 
 | Term | Meaning and reference |
 | --- | --- |
 | `agent` | Software that uses a `model` and tools to carry out a task with some independence. An agent may make several `requests`; it is not a subscription identity. The widget's **Agents** menu selects `vendors`, not individual running agents. [OpenAI agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/). |
-| `vendor` / `provider` | A source family represented by `UsageVendor`: Codex, Claude, or Antigravity. `ProviderProfile` is the implementation's local `account` configuration, not a claim that model name proves billing ownership. |
+| `vendor` / `provider` | A source family represented by `UsageVendor`: Codex, experimental Claude, or experimental Antigravity. `ProviderProfile` is the implementation's local `account` configuration, not a claim that model name proves billing ownership. |
+| `experimental support` | A theoretical implementation with passing synthetic tests but no real-subscription validation. Claude and Antigravity retain this status until contributors with subscriptions validate the scope in section 5. |
 | `model` | The AI system processing input and producing output within a `request`. A selected model can affect how a commercial allowance is consumed. [Codex pricing and usage explanation](https://learn.chatgpt.com/docs/pricing). |
 | `plan` | A provider subscription or commercial allowance arrangement. In code, `QuotaPlanProfile` means the manually selected `quota scheme`, not an authenticated marketing plan or an implementation work plan. See the same [pricing explanation](https://learn.chatgpt.com/docs/pricing). |
 | `account` | An explicit local mapping of sources to an immutable ID, `vendor`, alias, and settings. It represents the user's intended subscription/account separation; checking source ownership does not sign in or verify billing entitlement. |
@@ -97,6 +104,7 @@ highlight domain terms and code identifiers; bold text identifies UI labels.
 | `session` / `source` | A session is a logical history identified by metadata or accepted content. A source is a physical file or configured location. Copies of one session must not become additional consumption. |
 | `quota` / `quota pool` | A reported allowance percentage and optional reset time for one independently limited pool. Pools may differ by duration or model. Pool names alone do not prove boundary rules. [Claude status-line fields](https://code.claude.com/docs/en/statusline), [Antigravity status line](https://antigravity.google/docs/cli/statusline/). |
 | `quota scheme` / `capability` | Local policy describing which pool boundaries, percentage/reset displays, and estimates are supported for an `account`. A capability can exist while current data is unavailable. |
+| `quota run` | Consecutive acquired reports for one pool with identical normalized quota facts. The ledger retains the run's first acquisition time; a value change, including a disabled/enabled transition, starts a new run. This does not establish provider freshness. |
 | `observation` / `scope` | An observation is a timestamped report. A quota scope combines source, pool/bucket, and window duration so unrelated reports are selected separately rather than summed. |
 | `capture` / `status line` | A capture is sanitized local output from the optional helper. A status line is a CLI callback that receives structured state and normally renders terminal text. Its invocation time need not be the provider's observation time. See the provider links above. |
 | `tracker` / `period` | A named, account-bound total over one or more resolved time intervals. A period can be calendar-based, elapsed, or aligned with a provider reset. |
@@ -128,18 +136,29 @@ Values below come from [build.gradle.kts](build.gradle.kts),
 | Item | Value |
 | --- | --- |
 | Plugin name / ID | AI Usage Trackers / `local.codexusage.daily` |
+| Vendor contact | `ai.usage.contributors@gmail.com` |
+| Project / support | [Public repository](https://github.com/andrasballai-guidance/ai-usage-trackers) / [issues](https://github.com/andrasballai-guidance/ai-usage-trackers/issues) |
 | Widget factory ID | `CodexDailyTokens` |
 | Settings page / ID | **AI Usage Trackers** / `local.codexusage.daily.settings` |
 | Gradle project / group | `ai-usage-trackers` / `local.aiusagetrackers` |
 | Kotlin package | `local.aiusagetrackers` |
-| Build SDK | IntelliJ IDEA `2026.2.3` |
-| Declared platform compatibility | Build `262` through `263.*` |
+| Build/test SDK | IntelliJ IDEA `2026.3` |
+| Development sandbox (`runIde`) | IntelliJ IDEA `2026.3`; retains its existing sandbox profile |
+| Declared platform compatibility | Build `263` through `263.*` (IDEA 2026.3 only) |
 | JVM toolchain | JDK `25` |
 | Kotlin JVM / IntelliJ Platform Gradle plugin | `2.4.0` / `2.19.0` |
 | Gradle wrapper | `9.5.0` |
 | Bundled SQLite JDBC | `3.54.1.0`, excluding its SLF4J API dependency |
 | Platform-supplied facilities | Gson, coroutines, logging, Swing, and IntelliJ APIs |
 | Optional capture helper | Python `3.10+`; filesystem must support atomic hard-link publication |
+
+The plugin logo uses the supplied Lucide-based chart drawing, packaged as
+`META-INF/pluginIcon.svg` and `META-INF/pluginIcon_dark.svg`. Both SVGs are
+40 x 40, with the original paths uniformly inset for at least 2px transparent
+padding. Explicit blue strokes (`#3574F0` light, `#6EC5FF` dark) avoid relying on
+inherited CSS colors. The ISC notice is bundled in `licenses/lucide-ISC.txt`.
+See [JetBrains logo requirements](https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html).
+The version remains **1.0.0** until the owner explicitly requests a change.
 
 The package includes third-party notices and capture resources, excluding helper
 tests and Python cache files. Windows is the initial validation environment;
@@ -155,6 +174,25 @@ independent of these contracts. Provider-specific Codex names and classes that
 calculate a single day keep their descriptive names.
 
 ## 5. Sources and collection
+
+**Claude and Antigravity support is experimental.** Their adapters and capture
+paths are theoretically implemented from the documented contracts, and the
+synthetic parser, collection, persistence, quota and presentation tests pass.
+This demonstrates behavior against authored fixtures, not verified operation
+with real subscriptions. The maintainer has no access to Claude or Antigravity
+subscriptions. Contributors with access to the relevant subscriptions must test
+actual client logs and capture setup, token totals and deduplication, quota/reset
+observations against the provider's own usage display, and account isolation
+before verified support can be claimed. Record the client version, subscription
+and tested interface, redact any shared evidence, and distinguish observed passes
+from remaining gaps. Subscription credentials must never be shared.
+
+The experimental marker appears in vendor and account selectors, quota schemes,
+widget prefixes (including custom prefixes), action menus and usage-info titles.
+It is presentation metadata: serialized vendor identifiers, source contracts,
+account bindings and quota capability gates retain their existing meanings.
+See section 12 for additional coverage limits; synthetic UI demonstrations do
+not count as subscriber validation.
 
 ### 5.1 Codex discovery
 
@@ -187,26 +225,59 @@ conflicting, or changing import retains previous history and reports an issue.
 
 Limits are implemented differently: Codex bounds each line to **4,194,304 Java
 characters**, skips oversized/malformed records with diagnostics, and retries
-unclean sources. Other adapters bound files to **32 MiB** and records to
-**1,048,576 Java characters**, failing the file import on invalid input. The
-character bounds are not UTF-8 byte bounds. Codex streams into transaction-local
-staging; the other adapter reader materializes a bounded `ProviderBatch`.
+unclean sources. Other adapters bound records to **1,048,576 Java characters**,
+failing the file import on invalid input. They stream files without a whole-file
+size cutoff, staging request revisions on disk and committing only the completed,
+unchanged source snapshot. Character bounds are not UTF-8 byte bounds.
 
 ### 5.3 Optional capture helper
 
 [capture.py](tools/quota-capture/capture.py) receives callback JSON or stream
-records on standard input. It retains an allowlist of quota fields or finalized
-step identities/counters, wraps them with `vendor` and `captured_at`, and writes
-one content-addressed `.jsonl` file. Input and sanitized output are bounded to
-1 MiB per callback/stream record.
+records on standard input. It validates allowed field types, numeric ranges,
+timestamps and identifiers before retaining quota fields or finalized step facts.
+It wraps them with `vendor` and `captured_at` and writes one `.jsonl` file.
+Input reads and sanitized output are bounded to 1 MiB per callback/stream record;
+the stream reader limits allocation before accepting a line.
 
 Publication writes and syncs a temporary file, then uses a hard link to publish
-without overwriting a concurrent earlier capture. Identical sanitized reports
-reuse the existing file and its first capture time. The helper does not start an
+without overwriting a concurrent earlier capture. DONE steps use content identity
+and retain their first capture time. Quota file identity also includes acquisition
+time so available/disabled/value transitions remain ordered. Consecutive equal
+quota values are coalesced when reading the ledger; a later return to an earlier
+value starts a new run. Provider observation age remains unknown. Re-export the
+helper after upgrading to apply the new capture behavior. The helper does not start an
 agent, read authentication files, or access a network endpoint. Manual setup must
 preserve any existing status renderer. The plugin exports helper files but does
 not edit external provider configuration. Exact setup is in
 [capture instructions](tools/quota-capture/README.txt).
+
+### 5.4 Synthetic demonstration sources
+
+The standalone [generator](tools/synthetic-usage/generate.py) requires only Python
+3.10+. Its [JSON config](tools/synthetic-usage/config.json) sets per-vendor request
+ages, input/output/cache/reasoning counters, quota percentages, report ages and
+reset offsets. A single injected UTC `now` anchors every timestamp; the default
+uses current time and an optional ISO timestamp makes generation reproducible.
+Input includes cached input, and output includes reasoning; totals add input and
+output once. Claude's raw input field subtracts cache before serialization so its
+adapter adds it back once. Codex writes chronological cumulative reports paired
+with explicit response records; Antigravity writes sanitized DONE captures.
+
+Each run creates a fresh UUID dataset under `agent-logs/synthetic-usage`, or a
+specified new output directory; existing destinations are refused. No IDE settings,
+real logs, databases, vendor processes or credentials are accessed. Use separate
+new demo accounts for each dataset because imported ledger history is retained.
+The original Codex account's automatic discovery is unsuitable for isolated demos.
+Quota capture preserves the limitations in section 5.2: Claude/Antigravity have
+unknown provider observation time, and Antigravity pool names imply no verified
+weekly boundary. This tool does not bypass capability or freshness checks.
+Instructions and examples are in [README.txt](tools/synthetic-usage/README.txt).
+
+Python tests compare deterministic output against the committed synthetic fixtures;
+`SyntheticUsageGeneratorTest` imports those fixtures through the real Kotlin/database
+paths and checks repeated import, interval boundaries, cached input and quota values.
+The generator is a repository tool and is not bundled in the plugin distribution.
+The plugin version remains 1.0.0; no collection/runtime behavior changes.
 
 ## 6. Database and persistence
 
@@ -237,7 +308,7 @@ Current database `schema` is **4**; Codex parser metadata version is **3**.
 | `events` | Positive token increments keyed by session and sequence, with epoch seconds, nanoseconds, total, and history signature. |
 | `analytics` | Request, activity, and quota records with identity, time, sanitized JSON payload, and conflict marker. |
 | `provider_files` | Completed non-Codex file snapshot cursors: path, size, and modification time. |
-| Temporary staging tables | `staged` for streamed increments and `staged_analytics` for metadata; scoped to the writer connection. |
+| Temporary staging tables | `staged` for streamed increments, `staged_provider` for final request revisions and `staged_analytics` for metadata; scoped to the writer connection with file-backed temporary storage. |
 
 Connections use a **2,000 ms** busy timeout and foreign keys. Writers enable
 `journal_mode=WAL` and `synchronous=FULL`; readers enable `query_only` and require
@@ -326,8 +397,8 @@ aggregate reports are diagnosed separately from ordinary freshness warnings.
 ### 8.2 Quota selection and freshness
 
 [PlanCapabilities.kt](src/main/kotlin/local/aiusagetrackers/PlanCapabilities.kt)
-defines Codex weekly-only/weekly-plus-five-hour schemes, equivalent Claude
-schemes, Antigravity reported pools with unknown boundaries, and unverified
+defines Codex weekly-only/weekly-plus-five-hour schemes, experimental Claude
+schemes, experimental Antigravity reported pools with unknown boundaries, and unverified
 schemes. New Codex installations select weekly-only. Five-hour support is an
 independent choice; it is not inferred from a weekly reading. Only Codex schemes
 currently enable illustrative budget estimation.
@@ -409,8 +480,10 @@ but current shared presentation discards their colors while retaining hidden lab
 
 ### 9.1 Shared layout and draft behavior
 
-**Settings > AI Usage Trackers** contains six tabs and one shared bottom
-preview. Each tab has its own vertical scroll viewport; content follows viewport
+**Settings > Tools > AI Usage Trackers** contains six tabs and one shared bottom
+preview. The tab bar stays visible while tab content scrolls: the configurable
+implements `Configurable.NoScroll` to prevent an outer IDE scroll pane. Each tab
+has its own vertical scroll viewport; content follows viewport
 width, focus scrolls controls into view, and the unit scroll increment is 24
 logical pixels. Full-width bordered categories have bold titles, collapse
 toggles, and a borderless context-help icon. **Period details** starts collapsed;
@@ -444,7 +517,7 @@ drafts on **Cancel**, with the local preview-pin exception below.
 | **Appearance — Font / Date and time** | IDE-default or custom font, 8–24 logical-point size, editable date preset/custom pattern, 12/24-hour format, and format sample. |
 | **Appearance — Coloring** | Master switch, weekly quota colors, weekly pacing, eligible tracker goal switches, five palette colors, decimal breakpoints, gradient samples, and palette reset. |
 | **Sources — Additional Codex folders** | Multiline extra homes for the original Codex account, alongside automatic discovery. |
-| **Advanced — Accounts and usage sources** | Vendor, account to edit/display, **Add account**, alias, vendor-specific source paths with folder/file pickers, capture folder with browse, ownership confirmation, configuration status, default-tracker creation, setup instructions, and helper export to an empty folder. |
+| **Advanced — Accounts and usage sources** | Vendor, account to edit/display, **Add account**, **Remove account**, alias, vendor-specific source paths with folder/file pickers, capture folder with browse, ownership confirmation, configuration status, default-tracker creation, setup instructions, and helper export to an empty folder. Removal requires reassigning/removing bound trackers and preserves the ledger; the original Codex and last account per vendor are protected. Add is disabled at 32 profiles. |
 | **Advanced — Tracker limit** | Maximum tracker count. Existing larger lists raise the initial limit to preserve them; lowering it never deletes trackers automatically. |
 
 Provider-week mode hides amount/unit, day-selection, current-period, and elapsed
@@ -460,7 +533,7 @@ for new schedules.
 | Starter trackers | **Today**, **This week**; visible, calendar, amount 1, all days, include current, system zone. |
 | Tracker limit / amount / end offset | 5, configurable 1–32 / 1–1000 / 0–1000. |
 | Accounts | At most 32 distinct local profiles; IDs match `[A-Za-z0-9_-]{1,80}`. |
-| Account aliases / widget prefixes / quota labels | Alias and labels 1–80 printable characters; prefix may be blank to use vendor name. |
+| Account aliases / widget prefixes / quota labels | Alias and labels 1–80 printable characters; prefix may be blank to use vendor name. Prefixes cannot begin with `<html>` (case-insensitive, after trimming). Existing saved values with that marker are quoted in menus; dynamic labels and metric tooltips render literal text. |
 | Collection | Codex enabled; other vendors disabled. Original Codex source mapping starts confirmed. |
 | Optional metrics | Last request, quota percentages/resets, estimated budget, and token percentage suffixes off. |
 | Appearance | IDE font; `yyyy-MM-dd`; 24-hour clock; coloring enabled, weekly quota colors/pacing off. Date patterns are 1–80 characters and must produce readable output. |
@@ -585,7 +658,22 @@ inner ribbon, smooth-mode speed controls transition duration rather than dwell.
 Restart's last-to-first wrap has no outgoing transition; Bounce reverses member
 order at endpoints. A **25 ms** timer drives motion; hover, focus, menus, open
 Info/resize/chooser popups, and an active transition pause advancement.
-**Alt+Left/Right** navigates manually. Actual incoming panel bounds move with its
+**Alt+Left/Right** navigates manually while the widget is hovered or contains
+focus, within its focused IDE window and with no menu or widget popup open.
+A lifecycle-scoped key dispatcher consumes the arrow press/release and the
+following Alt release without requesting focus from the editor. It is removed
+when the carousel is detached or disposed, so replacing the vendor panel does
+not remove shortcut handling.
+Wheel input over the agent label accumulates precise rotation into whole agent
+steps, discarding the remainder on direction reversal. Left dragging the label
+starts at **3 scaled pixels** and commits **one agent step per 30 scaled pixels**
+on release, suppressing the action menu for drags. Vertical step uses vertical
+drag distance; other modes use horizontal distance. These gestures cycle only
+carousel members and are stationary with one member. A plain label click opens
+the actions menu. Label and ribbon gesture surfaces exclude wheel and left-button
+events from glass-pane preprocessing; ribbon gestures continue to affect only
+the current agent's entries.
+Actual incoming panel bounds move with its
 pixels, preserving alignment of hit targets. Inner motion is paused during outer
 transitions.
 
@@ -652,18 +740,6 @@ partial destination.
 
 ### 12.1 Coverage and interpretation
 
-- **Confirmed timing discrepancy:** the account-monitor `customCollect` path
-  samples `now` before collection and passes it through to scan metadata. Codex's
-  optional completion-clock callback is not supplied on that path, and the other
-  collector also records the passed instant. Consequently **Last completed
-  collection** currently carries the start time of a completed scan, and reset
-  durations use that earlier reference. Long scans can therefore make displayed
-  timestamps/countdowns inaccurate. A runtime fix should sample completion time
-  when committing scan metadata and add a controllable-clock regression test.
-  This was found during documentation review and remains unfixed. Evidence:
-  [monitor dispatch](src/main/kotlin/local/aiusagetrackers/UsageService.kt),
-  [Codex completion default](src/main/kotlin/local/aiusagetrackers/CodexUsageCollector.kt),
-  and [provider scan recording](src/main/kotlin/local/aiusagetrackers/ProviderUsageCollector.kt).
 - Local sources establish local recorded consumption, not authenticated,
   account-wide billing totals. Source ownership confirmation is user-supplied.
   Separate account configurations do not prevent the user mapping the same
@@ -673,7 +749,7 @@ partial destination.
   Desktop-only, remote/cloud, Air chat/ACP, and JetBrains AI billing coverage need
   separate evidence. macOS discovery exists but is unvalidated; Linux IDE paths
   are explicit rather than guessed.
-- Antigravity token support covers captured headless DONE steps. Raw native
+- Experimental Antigravity token support is limited to captured headless DONE steps. Raw native
   transcripts and interactive/desktop/ACP token traffic are unverified; captured
   completion time has arrival-time precision. Generic quota pools do not enable
   fixed-week calculations until their boundaries are verified.
@@ -689,6 +765,64 @@ partial destination.
   by synthetic headless tests alone.
 
 ### 12.2 Development checks and evidence
+
+The UI defect fixes passed 256 Gradle tests, packaging/configuration, IDEA 2026.3 compatibility verification and changed-file IntelliJ inspections. Native retests verified readable foregrounds across both theme directions and hover shortcut isolation from the focused Project pane. See R2 in the acceptance record for candidate identity and evidence. Plugin Verifier 1.411 is explicitly declared for the build check.
+
+The maintained native acceptance plan is [docs/native-ui-test-plan.txt](docs/native-ui-test-plan.txt).
+The [Given/When/Then testing record](docs/native-ui-testing.txt) identifies the
+plugin and IDE versions for historical observations and keeps current-candidate
+expectations separate. R1 records partial agent-run IDEA 2026.3 results and two reproduced defects; R2 records successful targeted native retests after their fixes. U1 records the owner's installed-plugin testing as `USER-PASS` for all other 43 scenarios, separately from automated and controlled native checks. Independent screen-reader verification remains blocked.
+Update both documents for every release; see AGENTS.md. The older local coverage
+report below remains the provenance for historical observations, not a pass for
+the current candidate.
+
+Experimental-vendor labelling on 2026-11-16 passed all **255 Gradle tests**,
+**8 capture-helper tests** and **6 generator tests**, packaging, configuration
+checks and Plugin Verifier for IDEA **2026.3**, build **263.7307.200**. IntelliJ
+inspections of the 11 changed supported source/descriptor files reported no
+findings. The existing settings XML round-trip test passes with persisted enum
+strings unchanged; only UI rendering adds the experimental labels. Package
+integrity checks confirm version **1.0.0** and matching helper resources.
+Evidence: `agent-logs/experimental-vendors-final-validation.log`,
+`agent-logs/experimental-vendors-python-capture.log`,
+`agent-logs/experimental-vendors-python-generator.log` and
+`agent-logs/experimental-vendors-package-integrity.log`. No real-subscription,
+native/live-plugin or performance testing was performed. Subscriber validation
+in section 5 remains necessary before verified vendor support can be claimed.
+
+Review remediation on 2026-11-13 passed all **255 Gradle tests**, **8 capture-helper
+tests** and **6 generator tests**. The final 1.0.0 archive passed `buildPlugin`,
+`verifyPluginConfiguration`, and `verifyPlugin` against IDEA **2026.3**, build
+**263.7307.200**. IntelliJ inspections of all 15 source/test files changed by this
+task reported no findings. ZIP/JAR integrity checks passed, and the packaged helper
+and instructions match their sources. Evidence:
+`agent-logs/project-review-final-artifact-validation.log`,
+`agent-logs/project-review-python-capture.log`,
+`agent-logs/project-review-python-generator.log`, and
+`agent-logs/project-review-package-integrity.log`. No native/live-plugin or
+performance testing was performed for these fixes.
+
+Earlier synthetic generator validation on 2026-11-13 passed six Python tests and all
+245 Gradle tests, including fixture imports through all three real vendor paths.
+`buildPlugin`, `verifyPluginConfiguration` and `verifyPlugin` succeeded; the
+unchanged plugin artifact reused its up-to-date three-target compatibility result.
+IntelliJ inspections of the generator, Python tests, config, Kotlin test and CI
+workflow reported no findings. Evidence: `agent-logs/synthetic-generator-python-tests.log`
+and `agent-logs/synthetic-generator-gradle-validation.log`. No native/UI or
+performance testing was performed for this standalone tool.
+The earlier **1.0.0** contact/logo package passed all **244** ordinary Gradle tests,
+`buildPlugin`, `verifyPluginConfiguration`, and Plugin Verifier on all three IDEA
+targets on 2026-11-13. IntelliJ inspections of the build script, descriptor and
+both SVGs reported no findings. The packaged descriptor contains the requested
+version and email; both icon variants and the ISC license match their source
+resources. Offline rendering verified both variants at 40px and 80px on light
+and dark backgrounds. No native/live-plugin or performance tests ran for this
+metadata-only change. Evidence: `agent-logs/marketplace-icon-contact-1.0.0-validation.log`.
+Historical version **1.0.1** metadata validation passed on 2026-11-13: all **244** Gradle
+tests, `buildPlugin`, `verifyPluginConfiguration`, and Plugin Verifier for IDEA
+2026.2.3, 2026.2.4 and installed build 263.7307.200. IntelliJ inspections of the
+changed build script and plugin XML reported no findings. Evidence:
+`agent-logs/marketplace-metadata-1.0.1-validation.log`.
 
 Native UI testing of **1.0.0** on Windows in the IDEA 2026.2.3 sandbox is
 **partial**. The [native UI coverage report](plans/results/native-ui-test-coverage-1.0.0.txt)
@@ -729,8 +863,19 @@ From the repository root on Windows:
 .\gradlew.bat verifyPlugin
 ```
 
-`verifyPlugin` configures IDEA 2026.2.3 and 2026.2.4. Add
-`-PverificationIdePath="<installed IDE directory>"` to include a local IDE.
+`verifyPlugin` targets IDEA 2026.3 only. Add
+`-PverificationIdePath="<installed IDE directory>"` to verify an installed 2026.3 IDE instead of downloading it.
+`runIde` delegates to `runIde20263` and forwards `--args`. It launches IDEA
+2026.3 in `.intellijPlatform/sandbox/ai-usage-trackers/IU-2026.3`, with its own
+configuration, system, plugin and log directories. Use
+`-PrunIdePath="<installed IDEA 2026.3 directory>"` to use a local installation;
+this property also selects the local 2026.3 build/test SDK. Otherwise Gradle
+resolves IDEA 2026.3. This runtime selection uses the
+[IntelliJ Platform testing extension](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-testing-extension.html).
+To retain an existing 2026.2.3 sandbox's plugin settings, close that sandbox and
+copy `config_runIde/options/codexDailyTokens.xml` into
+`IU-2026.3/config_runIde20263/options/codexDailyTokens.xml` before first launch.
+Do not overwrite an existing 2026.3 settings file or copy IDE lock/system files.
 Build output is under `build/distributions`. IntelliJ inspections must also cover
 changed supported source/test/build files for implementation completion.
 Tests use synthetic histories and controllable clocks/zones for parsing,
@@ -766,7 +911,8 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 
 | Plugin version | Principal change |
 | --- | --- |
-| 1.0.0 | Set the first 1.0 plugin version. |
+| 1.0.1 | Expand Marketplace metadata with feature descriptions and public project, documentation, support and license links. |
+| 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, and IDE-first hover shortcut consumption. |
 | 0.18.8 | Remove support for older portable configuration and database schema versions. |
 | 0.18.7 | Simplify display decoding, session import and widget rendering control flow. |
 | 0.18.6 | Simplify bounded line termination control flow; cover EOF, newline and line-size boundaries. |
@@ -807,4 +953,6 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 | 0.18.1 | General/Advanced setup layout and null quota-scheme/settings event fixes. |
 | 0.18.2 | Per-setting help columns and vendor-specific inline explanations. |
 | 0.18.3 | Renamed to AI Usage Trackers; neutral source packages/shared classes and artifact naming, retaining installation, persistence and portable-format contracts. |
+
+
 

@@ -3,9 +3,13 @@ package local.aiusagetrackers
 import java.nio.file.Path
 import java.util.UUID
 
-enum class UsageVendor(private val label: String) {
+enum class UsageVendor(val displayName: String) {
     CODEX("Codex"), CLAUDE("Claude"), ANTIGRAVITY("Antigravity");
-    override fun toString(): String = label
+    val experimental: Boolean get() = this != CODEX
+    fun supportLabel(text: String): String =
+        if (experimental && !text.endsWith(" (experimental)", ignoreCase = true)) "$text (experimental)" else text
+    val presentationLabel: String get() = supportLabel(displayName)
+    override fun toString(): String = displayName
 }
 data class AccountChoice(val id: String, val label: String) { override fun toString() = label }
 
@@ -34,7 +38,7 @@ data class ProviderProfile(
         const val LEGACY_CODEX = "legacy-codex"
         fun defaults() = UsageVendor.entries.map { vendor ->
             ProviderProfile(id = if (vendor == UsageVendor.CODEX) LEGACY_CODEX else vendor.name.lowercase(), vendor = vendor,
-                alias = "$vendor account", verified = vendor == UsageVendor.CODEX,
+                alias = "${vendor.displayName} account", verified = vendor == UsageVendor.CODEX,
                 analytics = AnalyticsDisplayOptions(planProfile = if (vendor == UsageVendor.CODEX) QuotaPlanProfile.CODEX_WEEKLY else QuotaPlanProfile.UNKNOWN))
         }
     }
@@ -46,8 +50,11 @@ data class VendorConfiguration(
     var label: String = "",
     var accountId: String = "",
 ) {
-    fun displayLabel(): String = label.trim().ifEmpty { vendor.toString() }
-    fun validate() { require(label.length <= 80 && label.none(Char::isISOControl)) { "Plan labels must be at most 80 printable characters" } }
+    fun displayLabel(): String = vendor.supportLabel(label.trim().ifEmpty { vendor.toString() })
+    fun validate() {
+        require(label.length <= 80 && label.none(Char::isISOControl)) { "Plan labels must be at most 80 printable characters" }
+        require(!label.trim().startsWith("<html>", ignoreCase = true)) { "Widget prefixes cannot begin with an HTML marker" }
+    }
 }
 
 /** Separate collection, single selection and carousel membership. No UI or filesystem IO. */
@@ -92,12 +99,25 @@ data class ProviderConfiguration(
     fun collecting(): List<ProviderProfile> = profiles.filter { p -> p.configured() && vendors.any { it.vendor == p.vendor && it.tracking } }
     fun eligible(): List<UsageVendor> = UsageVendor.entries.filter { v -> vendors.any { it.vendor == v && it.tracking } && account(v)?.configured() == true }
     fun label(vendor: UsageVendor): String = vendors.firstOrNull { it.vendor == vendor }?.displayLabel() ?: vendor.toString()
-    fun menuLabel(vendor: UsageVendor): String = label(vendor).let { label -> if (vendors.count { it.displayLabel() == label } > 1) "$label ($vendor)" else label }
+    fun menuLabel(vendor: UsageVendor): String = label(vendor).let { label -> if (vendors.count { it.displayLabel() == label } > 1) "$label ($vendor)" else label }.let {
+        // Old saved settings may predate validation. A visible quote prevents menu
+        // rendering from treating their literal text as an HTML document.
+        if (it.startsWith("<html>", ignoreCase = true)) "“$it”" else it
+    }
     fun validate() {
         require(profiles.size <= 32 && profiles.map { it.id }.distinct().size == profiles.size) { "At most 32 distinct accounts are supported" }
         require(vendors.map { it.vendor }.toSet() == UsageVendor.entries.toSet() && vendors.size == UsageVendor.entries.size) { "Expected one configuration per vendor" }
         profiles.forEach { it.validate() }; vendors.forEach { it.validate() }; display.validate()
         vendors.forEach { v -> require(profiles.any { it.id == v.accountId && it.vendor == v.vendor }) { "Select an account for $v" } }
+    }
+    fun removeAccount(id: String, inUse: Boolean) {
+        val profile = profiles.single { it.id == id }
+        require(id != ProviderProfile.LEGACY_CODEX) { "The original Codex account cannot be removed" }
+        require(!inUse) { "Reassign or remove this account's trackers before removing the account" }
+        val replacement = profiles.firstOrNull { it.vendor == profile.vendor && it.id != id }
+        require(replacement != null) { "Keep at least one account for each vendor" }
+        profiles.remove(profile)
+        vendors.filter { it.accountId == id }.forEach { it.accountId = replacement.id }
     }
     fun reconciled() = isolatedCopy().also { result ->
         val eligible = result.eligible()

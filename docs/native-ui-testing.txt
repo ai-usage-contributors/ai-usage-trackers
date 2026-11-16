@@ -1,0 +1,676 @@
+NATIVE UI TESTING RECORD - GIVEN / WHEN / THEN
+Maintained: 2026-11-16 | Next planned plugin version: 1.0.0
+
+1. HOW TO READ THIS RECORD
+
+Given/When/Then describes the scenario and expected outcome. Observed records
+what evidence actually establishes; it must never be replaced with an expectation.
+Execution is separate from documentation. Sections 2-5 preserve historical/planned records; section 7 contains agent-run R1 results and section 8 records owner-reported installed-plugin testing.
+
+Stable IDs W/S/T/A/Q/C retain the historical coverage IDs. N01-N08 expand scope
+for current changes. Record each environment/input/failure variant separately.
+A broad parent passes only when all required variants pass. Use PASS, LIMITED,
+INCONCLUSIVE, FAIL, BLOCKED or NOT RUN, with a specific reason/evidence.
+UNTESTED below is the original H1 status and corresponds to NOT RUN.
+Evidence tier USER-PASS records owner-reported successful use of the installed
+plugin in the IDE. It is distinct from agent-observed PASS and automated checks.
+Record scope, date and known installation details; unknown hashes/builds remain
+unknown. It does not convert unexecuted agent checks into executions, certify
+unobserved instrumentation, or carry automatically to a rebuilt artifact.
+
+Each executed case must resolve to a run containing:
+- Plugin version AND exact artifact SHA256; source revision or identified local
+  snapshot. Same version number alone never establishes the same candidate.
+- Execution date/start/end, tester, IDE version/build, OS, theme, IDE zoom,
+  OS display scaling, window size, input method and screen reader/version.
+- Fixture/config IDs, known totals, relevant zone/reset reference, initial
+  settings and expected persistence behavior.
+- Observed outcome, status, evidence paths/time intervals, defects, restoration
+  outcome and linked retest records. Keep local evidence under agent-logs;
+  only sanitized summaries belong in version control.
+
+Record format for future executions:
+  ID / variant:
+  Run:
+  Plugin version / SHA256 / revision or local snapshot:
+  Date / IDE version and build / OS / display and input environment:
+  Fixtures and initial state:
+  Given:
+  When:
+  Then (expected):
+  Observed:
+  Status / evidence / defect:
+  Restoration / retest:
+
+2. RUN REGISTER
+
+H1 - HISTORICAL EVIDENCE CONSOLIDATION, NOT A NEW EXECUTION
+Plugin version performed under: 1.0.0.
+IDE performed under: IDEA 2026.2.3, IU-262.10968.63; Windows 11.
+Evidence date: 2026-11-13; exact per-action timestamps/tester identities are not
+established by the consolidated report. ZIP hash and source revision are unknown.
+Stable retries generally used near-full-screen geometry around 1906 x 1016.
+Only S03 establishes a particular theme/zoom pair; other variants are unrecorded.
+No independently archived screenshot/video set is available. Early routing was
+uncertain; H1 does not establish that production settings were untouched.
+All section 4 entries explicitly inherit H1's plugin/IDE versions, date and limits.
+A PASS certifies only the narrow recorded observation under that environment.
+
+R1 - CURRENT-CANDIDATE RUN, PARTIAL EXECUTION (2026-11-16)
+Plugin version planned: 1.0.0; candidate hash/revision must be filled at execution.
+IDE planned: 2026.3; exact installed build/OS/display/input details to be recorded.
+Execution began 2026-11-16 by Codex via Windows computer-use. See section 7 for executed variants; other R1 NOT RUN annotations remain applicable.
+The 26 historical H1 passes are not carried forward to this different candidate
+or supported IDE target. No native 2026.3 or real-subscription pass is claimed.
+
+3. HISTORICAL SOURCES AND COUNTS
+
+Primary consolidation: plans/results/native-ui-test-coverage-1.0.0.txt.
+Evidence references inherited from that report:
+E1 agent-logs/ui-acceptance-1.0.0.txt (routing caveat).
+E2 agent-logs/ui-resume-routing-1.0.0.txt (routing caveat).
+E3 agent-logs/native-ui-session-handoff-1.0.0.txt (stable retry/historical state).
+E4 agent-logs/native-ui-followup-1.0.0.txt.
+E5 agent-logs/carousel-synthetic/RESULTS.txt.
+E6 agent-logs/ui-export-1.0.0.json.
+E7 agent-logs/carousel-synthetic/ (synthetic fixtures and settings snapshots).
+These references are inherited, not independently re-executed or revalidated here.
+E5's referenced error-review.txt was absent during consolidation; do not cite it
+as available evidence. A bounded earlier log review is not a general clean-startup
+guarantee. Claude/Antigravity carousel fixtures used 1200/2400 synthetic tokens;
+they do not establish actual subscription usage, quota freshness or provider setup.
+
+H1: 26 PASS, 4 LIMITED, 1 INCONCLUSIVE, 6 UNTESTED = 37 scenarios.
+Fully passed: 70.3%; attempted including limited/inconclusive: 83.8%.
+Not fully passed: 11/37 = 29.7%. Counts are equal-weight scenario counts, not a
+measurement of every behavior or a current-release acceptance percentage.
+R1: partial variant execution; see section 7. No full 45-case acceptance claimed.
+
+4. HISTORICAL GIVEN / WHEN / THEN CASES
+
+W01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3,E4
+Given: The H1 sandbox has Today, This week and Last request enabled.
+When: The widget is displayed.
+Then (expected): Those entries are visible.
+Observed: Those entries were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: Last request is enabled in the sandbox.
+When: The sandbox process is restarted.
+Then (expected): Last request is displayed again.
+Observed: Its display returned after restart.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W03 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3,E4
+Given: Local usage sources are configured.
+When: Collection runs and the widget is observed.
+Then (expected): Readings appear and continue updating.
+Observed: Collection/readings returned and continued updating; this is not provider reconciliation.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W04 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | LIMITED | Evidence E4
+Given: A sandbox project has its widget installed.
+When: Projects are reopened and multiple projects are used.
+Then (expected): Each project has one working widget and collection is not duplicated.
+Observed: One visible widget after restart was observed; multi-project and repeated close/reopen behavior were not fully tested.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W05 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3,E4
+Given: Collected readings are available.
+When: Usage Info is opened and then closed.
+Then (expected): It shows exact totals, periods, timestamps and request breakdowns and closes.
+Observed: The stated information and closing behavior were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W06 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3
+Given: Usage Info holds a captured reading.
+When: Update View is selected after new readings are available.
+Then (expected): Displayed readings and evaluation timestamps update.
+Observed: Changed readings/timestamps were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W07 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3
+Given: The sandbox has weekly quota observations.
+When: Quota details are displayed.
+Then (expected): Percentage, reset/countdown, observation time and freshness/scope explanation are visible.
+Observed: Those values/explanations were visible; they were not independently reconciled to a provider.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W08 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: Usage Info has no outstanding operational warnings.
+When: Usage and Warnings pages are opened.
+Then (expected): Warnings says No operational warnings and Acknowledge Page is absent on Usage and empty Warnings.
+Observed: Both visibility conditions and the empty message were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W09 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: The empty Warnings page is selected.
+When: Copy Page is used and pasted into sandbox search.
+Then (expected): The copied text exactly equals No operational warnings.
+Observed: Exact clipboard content was checked.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+W10 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | LIMITED | Evidence E4,E5
+Given: The sandbox widget is active.
+When: Popup and Settings transitions are repeated.
+Then (expected): Popup ownership/disposal remain correct throughout broader lifecycle operations.
+Observed: No duplicate visible popup was seen in observed transitions; broad lifecycle acceptance remains incomplete.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3,E4
+Given: The Settings preview is available.
+When: It is pinned, tabs are switched and the process is restarted.
+Then (expected): The preview docks at the bottom and its pin survives.
+Observed: General/Advanced/Trackers switching and restart persistence were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: General is open in Settings.
+When: Category help is expanded.
+Then (expected): Readable per-setting help appears beside the controls.
+Observed: The General help column expanded and was readable.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S03 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: General/help is shown in the sandbox.
+When: Islands Light is inspected at 100% and 110%, then original appearance restored.
+Then (expected): The inspected content is readable and original Islands Dark/100% returns.
+Observed: This limited General/help appearance scope passed; it does not cover every tab/theme/scale.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S04 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: A settings category and its header have focus or pointer access.
+When: The header is collapsed by mouse, expanded by Space and collapsed by Enter.
+Then (expected): The category changes state and surrounding controls reposition.
+Observed: Those three actions and repositioning were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S05 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: A tracker has Invalid/TestZone and Period is collapsed.
+When: Apply is selected.
+Then (expected): Period is revealed and the invalid time zone is rejected.
+Observed: Rejection/reveal were observed; Cancel was used.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S06 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3
+Given: Advanced account/source setup is open.
+When: Codex, Claude and Antigravity are selected in turn.
+Then (expected): Source/account/capture/helper fields match the selected vendor and missing setup is explained.
+Observed: Field switching and mapping/verification requirements were observed; this did not validate subscriptions or the later experimental labels.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S07 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | LIMITED | Evidence E2,E3
+Given: Format/ribbon controls and an unverified quota scheme are selected.
+When: 12-hour preview and vertical-step settings are inspected.
+Then (expected): Applicable fields render and unsupported quota controls are disabled.
+Observed: Some behavior was seen, but earlier routing uncertainty requires revalidation.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+S08 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | INCONCLUSIVE | Evidence E1,E2,E3
+Given: Settings is opened at known geometry.
+When: Default/small dialog layout is inspected.
+Then (expected): Controls remain accessible without unintended clipping.
+Observed: Early horizontal clipping was reported with uncertain routing/geometry; no defect or pass was established.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3,E6
+Given: Two trackers are configured; appearance/vendor inclusion is off.
+When: Export All is completed.
+Then (expected): A two-tracker file is produced with a success confirmation.
+Observed: The file and confirmation were recorded.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3
+Given: Two trackers are imported into an existing two-tracker draft with limit five.
+When: Merge preview and explicit Codex mapping are selected.
+Then (expected): Preview reports two imported, four of five resulting and duplicate names.
+Observed: Those counts, names and explicit mapping were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T03 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E3
+Given: The merge preview contains two imported trackers.
+When: Import into Draft is selected, then outer Settings is cancelled and reopened.
+Then (expected): Two trackers append in order but cancellation restores the original two.
+Observed: Order and cancellation/reopen result were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T04 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: An import preview has a two-tracker input and limit five.
+When: Replace is selected.
+Then (expected): The resulting count becomes two of five.
+Observed: The preview count changed to 2/5.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T05 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E4
+Given: Replace import has an account binding.
+When: Leave unconfigured is selected, then Settings is cancelled and reopened.
+Then (expected): The draft binding is blank and cancellation restores the original Codex binding.
+Observed: Both draft state and restored binding were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+T06 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: Transfer inputs exercise appearance/vendor settings, different accounts and invalid formats.
+When: Inclusion, mappings and cancellation at each transfer stage are exercised.
+Then (expected): Only chosen settings persist; invalid input is rejected and cancellation is safe.
+Observed: No completed native evidence for this broader matrix.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+A01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: All settings, nested editors, dialogs and popups are available.
+When: Keyboard traversal, hovering and a screen reader are used.
+Then (expected): Focus, operability, tooltips and equivalent accessible descriptions are correct.
+Observed: No full native accessibility acceptance was recorded.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+A02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: All six tabs and nested controls are available.
+When: The theme/zoom/scroll matrix is exercised.
+Then (expected): Content stays readable, reachable and correctly laid out.
+Observed: No complete all-tabs environment matrix was recorded.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+Q01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: Isolated quota fixtures cover stale, expired, reset-only and missing pinned pools.
+When: The UI is refreshed and reset boundaries are crossed.
+Then (expected): States/boundaries are explained correctly without adopting another pinned pool.
+Observed: No controlled native quota-state matrix was recorded.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+Q02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: Warnings/integrity findings and a safely controlled persistence failure are available.
+When: Acknowledgement, retry and stale-snapshot paths are exercised.
+Then (expected): Only the intended captured findings are cleared; failures allow retry.
+Observed: No completed native evidence for outstanding-findings acknowledgement and failure paths.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C01 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5,E7
+Given: Separate synthetic Claude and Antigravity accounts have totals 1200 and 2400; three-second vertical rotation is configured.
+When: Automatic rotation is observed.
+Then (expected): The two vendor views display their matching totals.
+Observed: TEST Claude 1.2K and TEST Antigravity 2.4K were observed; names predate experimental labelling.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C02 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5
+Given: Both synthetic vendors belong to the carousel.
+When: Agents is opened.
+Then (expected): Both members are checked.
+Observed: Both checkmarks were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C03 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5
+Given: Both synthetic vendors belong to the carousel.
+When: Antigravity is removed and then restored.
+Then (expected): Claude remains selected, removal of the last member is disabled and both checks return.
+Observed: The complete membership sequence was observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C04 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5
+Given: A synthetic vendor view is displayed.
+When: Its menu is being used.
+Then (expected): The displayed vendor stays stable during interaction.
+Observed: Stable displayed vendor was observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C05 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5
+Given: The synthetic widget has focus and displays Claude.
+When: Alt+Right is pressed.
+Then (expected): The displayed vendor switches to Antigravity.
+Observed: That focused keyboard switch was observed; hover-only behavior was not established.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C06 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5
+Given: Automatic synthetic-vendor rotation is configured.
+When: Focus enters the widget and then moves to the project tree.
+Then (expected): Rotation pauses for widget focus and resumes after focus leaves.
+Observed: Pause and resume were observed.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C07 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | PASS | Evidence E5,E7
+Given: Synthetic Antigravity usage is 2400, input 2000 and output 400.
+When: Usage Info is opened while vendor views can rotate, then closed.
+Then (expected): It shows those values, remains tied to that account and closes without duplication.
+Observed: Those totals/context/close behaviors were observed; no real subscriber was involved.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C08 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | LIMITED | Evidence E5
+Given: The test widget has a single tracker.
+When: A vertical drag is attempted.
+Then (expected): Inner ribbon navigation can be established independently of vendor navigation.
+Observed: No vendor change occurred, but a one-item fixture cannot establish successful inner-ribbon dragging.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+C09 | Run H1 | Plugin 1.0.0 | IDEA 2026.2.3 | UNTESTED | Evidence None
+Given: Multiple ribbon entries force overflow across supported motion modes.
+When: Directions, timing, manual input, popup and width/state transitions are exercised.
+Then (expected): Packing, navigation, animations and hit targets remain correct.
+Observed: No completed native evidence for this expanded ribbon matrix.
+R1 status: NOT RUN; rerun on the identified current candidate under IDEA 2026.3.
+
+5. ADDED CURRENT-CANDIDATE GIVEN / WHEN / THEN CASES
+
+These are planned expectations only. No observations or passes exist yet.
+
+N01 - Claude/Antigravity experimental labelling
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: Default and custom prefixes, account/plan selectors and synthetic provider views are configured.
+When: Settings, previews, menus, Usage Info, helper help/instructions and accessible vendor announcements are inspected.
+Then (expected): Both vendors remain visibly experimental, including custom prefixes; Codex is unchanged and subscriber validation is not implied.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N02 - Account removal and limits
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: Disposable accounts include bound/unbound trackers, the original Codex account, each vendor's last account, and a 32-profile draft.
+When: Add/Remove, reassignment, Apply/OK, Cancel and reopening are exercised.
+Then (expected): Add cannot exceed 32; protected/bound accounts cannot be removed; safe removal affects only the draft until saved, reconciles selectors and retains history.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N03 - Quota transition/replay regressions
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: A pool has ordered synthetic A -> disabled -> A acquisitions, consecutive equal replays and out-of-order source discovery.
+When: Collection and details are refreshed after each state.
+Then (expected): Re-enabling is reflected, repeated equal facts do not renew their run's age, and unknown provider freshness stays unknown.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N04 - Large provider source and rollback
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: An isolated synthetic provider file exceeds 32 MiB, with known finalized request revisions and last-good stored totals.
+When: Import completes, then a separate malformed/changing source or cancellation is introduced and retried.
+Then (expected): Large-file totals are correct without freezing controls; failed/cancelled imports retain the last-good ledger and successful retry does not duplicate requests. Do not measure performance.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N05 - Collection completion timestamps
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: A known fixture import has recorded wall-clock start/end bounds, and another account has a near-future reset observation.
+When: Refresh is allowed to finish, Usage Info is updated and the actual reset boundary is observed.
+Then (expected): Last completed collection falls in the completion interval, countdown references that completed collection and rollover/state explanations match the fixture. Do not alter the production OS clock.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N06 - Current-format settings persistence
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: Current settings XML and current portable v11 data use known accounts, raw aliases, custom prefixes and quota schemes.
+When: Settings are applied/reopened/restarted and current-format data is exported/imported.
+Then (expected): Bindings/values survive without duplication or migration; experimental markers remain presentation-only. Unsupported database/portable schemas are safely rejected, not upgraded.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N07 - Literal imported text
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: A current-format fixture contains harmless text such as <html><b>literal</b></html> in an allowed tracker/alias field, and a separate HTML-marked vendor prefix.
+When: Import preview, selectors, color rows and metric tooltips are inspected.
+Then (expected): Allowed text is literal without resource loading; new invalid prefixes are rejected. Use no URLs, scripts, external resources or sensitive payloads.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+N08 - Label gestures and hover keyboard navigation
+Run: R1 (planned) | Plugin 1.0.0 (planned) | IDEA 2026.3 (planned)
+Given: Multiple synthetic carousel members and multiple ribbon items are visible in the focused sandbox window.
+When: The label is wheeled/dragged on the proper axis; Alt+Left/Right is used while hovering; focus then moves away and popup conditions are varied.
+Then (expected): Only the intended vendor/ribbon changes; dragging does not open actions; shortcuts are scoped to the widget and do not steal editor focus or leave Alt stuck.
+Observed: Not executed.
+Status: NOT RUN. Date/hash/revision/exact IDE build/evidence to be recorded at execution.
+
+6. FUTURE RELEASES AND CLAIMS
+
+Preserve H1 and future executed runs. Add a new run for each candidate, including
+rebuilds with the same version number; link defects and retests without erasing
+older outcomes. Update the plan and scenario inventory whenever features, settings,
+formats, provider integrations or fixes expand the acceptance scope. Do not delete
+an untested scenario to improve the percentage. Explicitly record exclusions and
+agreement before reporting an adjusted denominator.
+
+Claude and Antigravity remain experimental. Contributor tests with subscriptions
+under TECHNICAL.md section 5 must be recorded separately from synthetic native UI
+checks, including the actual client/interface and sanitized provider comparison.
+No subscriber credentials, real prompts, account identifiers or private histories
+belong in this document or committed artifacts. No passing synthetic result can
+be relabelled as real-subscription acceptance.
+
+Writing this record requires no native execution or package checks. Completing
+R1 requires the local prerequisites and explicit authorization in the test plan.
+
+
+7. R1 EXECUTION UPDATE - 2026-11-16 (PARTIAL; CONTINUATION PENDING)
+
+Candidate: plugin 1.0.0; ZIP SHA256
+B2A64C07B36BE113FC5284E948512EDF8E7117E1A8DF47DB107454765BF8594D.
+Source snapshot: agent-logs/native-r1-20261116/source-manifest.csv and revision.txt.
+Installed runIde files versus ZIP contents have not yet been independently compared.
+IDE: IDEA 2026.3 / IU-263.7307.200; Windows; 1900x1020 main capture,
+1235x857 Settings capture. OS build/scaling and screen reader not established.
+Input: automated Windows keyboard/mouse. Themes: Islands Dark and Islands Light.
+Baseline zoom 100% observed in action search; Zoom In IDE subsequently executed,
+but resulting percentage not independently confirmed. Synthetic demo accounts only.
+Local evidence: agent-logs/native-r1-20261116/observations.txt, options-before/,
+restoration.txt, codex-source-before.jsonl and reset-fixture-start.txt.
+UI images are in the tool transcript; no independent screenshot archive produced.
+
+A02 / theme transition: FAIL (R1-D01).
+Given: Islands Dark sandbox with rotating synthetic vendor widget.
+When: Switch to Islands Light, close Settings without hovering widget, then reverse.
+Then expected: Widget foreground remains readable in both themes.
+Observed: Pale text on light, then black text on dark; rotations do not reliably
+repair it. Hovering restores readable foreground. General settings text adapts.
+Follow-up: fix and retest both directions, focus/hover and vendor transitions.
+
+N08 / hover keyboard scoping: FAIL (R1-D02).
+Given: Project tree focused, pointer hovering widget label, Codex displayed.
+When: Alt+Right, then Alt+Left.
+Then expected: Only vendor selection changes; focused IDE control is unaffected.
+Observed: Codex -> Claude also switches Project -> Packages; reverse changes
+Claude -> Codex and Packages -> Project. Project view restored by reverse action.
+Follow-up: fix shortcut consumption/scoping and retest other focused controls.
+
+S02 narrow help expansion: PASS; General help column expanded/readable.
+C05 focused Alt+Right: PASS; Codex -> Claude observed.
+C06 focus pause/resume: PASS; Claude stable >30 seconds while widget focused;
+focus moved to project tree and rotation resumed to Codex.
+These narrow passes do not certify wider settings/accessibility/carousel matrices.
+
+S01/S07/S08: LIMITED. All six top-level tabs rendered in light theme, preview
+remained pinned. Enlarged General help wrapped/scrolled. Unpin reclaimed space,
+repin restored dock. Full nested, small-window and scaling matrix remains pending.
+Category mouse collapse observed; Space expansion inconclusive (focus unestablished).
+A01: LIMITED keyboard focus evidence (Remove, alias); UIA exposed window chrome
+only. Screen-reader descriptions and complete keyboard traversal remain NOT RUN.
+N01: LIMITED experimental labels observed in General, tracker account selector,
+preview and live widget; full custom-prefix/helper/accessibility scope pending.
+N02: LIMITED. Bound original Remove disabled. Add created unconfigured draft;
+confirmed disposable removal returned selector to original and focus to alias.
+Outer Cancel preserved original XML in initial run (equal before/after SHA256).
+32-account and all protection/persistence variants remain pending.
+T06/N06: LIMITED. Merge 11/9 blocked. Replace 2/9 imported unconfigured trackers;
+Apply accepted them. Full-option export rejected missing logical account bindings.
+Draft account reassignment worked; cancelled. Full inclusion/cancel matrix pending.
+Q02: LIMITED. Synthetic stale/reset warnings acknowledged, acquired markers and
+hid Acknowledge Page. Empty Log Integrity hid button; refresh preserved empty state.
+Fault/retry/stale-callback variants NOT RUN.
+Q01/N05: LIMITED. Two-minute synthetic Codex reset fact appended and refresh
+requested. Post-boundary unavailable observed; native pre-reset acquisition and
+completion interval not captured. Do not count as full boundary acceptance.
+C08/C09/N08 other variants: vertical vendor-label drag switched without menu;
+wheel identity inconclusive; full independent ribbon/motion matrix pending.
+Other scenarios and broader variants remain NOT RUN; no historical passes carried.
+
+Restoration: clean exit confirmed (Gradle exit 0). Original options and synthetic
+Codex source restored offline; plugin XML equality recorded. Original theme restored;
+zoom restoration after restart still needs UI verification. Synthetic warning
+acknowledgements remain in isolated DB. Restarted sandbox is awaiting explicit user
+window size/position confirmation before any further UI input.
+No source change, version change, performance measurement, commit/push/publication.
+Native acceptance remains incomplete. Continue all outstanding variants under the
+plan; fix/retest R1-D01/R1-D02 before claiming release acceptance.
+
+R1 CONTINUATION UPDATE - 2026-11-16 (PARTIAL)
+User confirmed restarted window before input. Original nine trackers, pin and
+synthetic readings returned; Action Search explicitly shows Zoom IDE Current:100%.
+Runtime plugin JAR and SQLite JAR match package bytes; searchable-options JAR is
+absent in the development sandbox. Exact installed-ZIP acceptance remains unrun.
+T06 variants: all-nine export with appearance and vendor options checked succeeded.
+Artifact agent-logs/native-r1-20261116/export-full.json has v11, nine trackers,
+three bindings, general and display. Malformed, duplicate-version-field and v10
+fixtures each rejected; tracker list remained unchanged. Full optional-setting,
+mapping, size-boundary and cancellation cross-product still incomplete.
+N07 variants: literal tracker and binding alias preserved in import preview;
+Replace 9/9 draft list, name editor and widget preview preserve literal tracker
+HTML-like text. Cancel discarded draft. General HTML-marked prefix rejected on
+Apply with Cannot Save Settings: Widget prefixes cannot begin with an HTML marker.
+Cancelled invalid prefix. Color-row and metric-tooltip variants still unrun.
+N04 variant: 34,440,000-byte source with 120000 repeated finalized revisions of one
+333-token request collected. Today, This week, Last hour and Last request each
+show333 in Antigravity Usage Info. Known request input111/output222/total333.
+File moved out of monitored folder to agent-logs/native-r1-20261116/large-source.jsonl;
+SHA256 DCDC77DA6E00B25BDBEF9AB514D175D68C210B15AB107C6F7A150DEC7A1D5B38.
+Synthetic ledger retains this request. Original provider source files untouched.
+45-second source lock and changed-timestamp 60-second lock attempted. Totals333
+retained, but no read-failure evidence surfaced: fault variant INCONCLUSIVE.
+Both locks released. Retry/cancellation/rollback matrix remains incomplete.
+Clipboard variant: Copy Page from empty Log Integrity, pasted into IDE action
+search, exactly No log integrity findings. Search dismissed without executing.
+A01 screen-reader variant BLOCKED: user explicitly confirmed no screen reader
+installed/configured and requested research. No installation was authorized/run.
+Recommended setup: NVDA from https://www.nvaccess.org/download/; enable IDEA
+Settings > Appearance & Behavior > Accessibility > Support screen readers;
+NVDA Tools > Speech Viewer records spoken text for sighted QA. Validate real
+focus announcements, label/control purpose/effect and nested editors in all tabs,
+transfer dialogs, preview and popups; screenshots/UIA alone are insufficient.
+Use installed NVDA for full functionality; temporary/portable mode can cover a
+non-elevated IDE but cannot interact with elevated apps without corresponding
+privileges. Do not enable sign-in/secure-screen features just for plugin tests.
+Official sources researched 2026-11-16:
+https://www.jetbrains.com/help/idea/accessibility.html
+https://api.nvaccess.org/documentation/userGuide.html#SpeechViewer
+https://api.nvaccess.org/documentation/userGuide.html#PortableAndTemporaryCopyRestrictions
+
+R1-D01/R1-D02 remain unresolved. No native acceptance completion claimed.
+Remaining scope includes multi-project lifecycle, complete settings/focus/theme/
+scaling and tooltip matrix, 32-account protection limits, complete import/export
+cross-product, full independent ribbon/carousel modes/gestures/timing, controlled
+quota disabled/replay/freshness/pinned-pool/reset matrix, acknowledgement fault/
+stale-callback paths, acquisition completion intervals, and N07 remaining variants.
+Do not count LIMITED or INCONCLUSIVE parents as passes or silently drop scenarios.
+
+R1 continuation interruption: the test window remained listed at 1898x1020,
+but repeated fresh captures, including after activation, showed only the IDE icon.
+Input stopped because controls were not observable. User restoration/readiness
+requested. Sandbox remains running; no blind shutdown attempted. Large source
+moved out, locks released, drafts discarded, Dark/100% verified before interruption.
+
+R1 FINAL STATE OF THIS EXECUTION SEGMENT - 2026-11-16 14:11 +01:00
+Capture recovered after user focus reset and explicit readiness confirmation.
+W04/W10 variants: opened ui-test-project-2 in same isolated process after its own
+user geometry confirmation. One widget appeared with same333 total, no visible
+doubling. Closed second project via File > Close Project; only original window
+remained. Original project remained usable with one widget; Usage Info333.
+This is limited evidence, not full repeated reopen/disposal/DB nonduplication matrix.
+C08 additional inner-region vertical drag: no visible item transition established;
+INCONCLUSIVE. Do not promote whole ribbon gesture matrix to PASS.
+Clean sandbox exit confirmed: no ui-test-project windows remain; Gradle runIde
+exit0 / BUILD SUCCESSFUL. Bounded 13:40-14:11 log search found zero ERROR-level
+lines; platform WARN lines exist. This is not a universal exception-free claim.
+Before final restore, plugin XML differed only in learned ribbon width average/count.
+Original plugin XML restored byte-for-byte offline; hashes in final-restoration.txt.
+Original Dark theme and100% zoom verified before exit. Added large source moved
+outside monitored folder; both source locks released. Synthetic333 request and
+warning acknowledgements remain in isolated DB as intentionally recorded history.
+No source edits, plugin version change, commit, push, publication, screen-reader
+installation or performance benchmark. Required build/inspection gates for source
+changes do not apply to these test-record-only edits.
+
+WARNING: Outstanding concerns - full native acceptance is incomplete. R1-D01
+(theme foreground) and R1-D02 (hover shortcut leaks into Project pane) need fixes
+and retests. A01 independent reader variant BLOCKED by unavailable screen reader.
+All earlier listed unexecuted or limited variants remain pending unless this
+continuation explicitly establishes them; no whole-suite pass or percentage given.
+LOCAL TESTING REQUIRED: with an unlocked workstation and isolated IDEA2026.3,
+run .\gradlew.bat runIde '-PrunIdePath=C:/Program Files/JetBrains/IntelliJ IDEA 2025.3.2'
+'--args=C:/source/ai-usage-trackers/agent-logs/ui-test-project' from repository root;
+confirm geometry with owner before input. Execute remaining variants under the
+ordered plan, requiring independent expected/observed evidence for each. Set up
+NVDA and IDEA screen-reader support after separate installation authorization;
+verify names, descriptions, focus and keyboard operation using Speech Viewer.
+Retest both theme directions and hover shortcuts against Project/editor focus after
+fixes. Exact installed ZIP and searchable-options acceptance remains separate.
+
+8. U1 - USER TESTING IN THE INSTALLED IDE (2026-11-16)
+
+Tier: USER-PASS. Tester: repository owner. Evidence: direct owner report in this
+conversation: all other tests passed through using the IDE with the plugin
+installed; these scenarios were encountered and behaved as expected.
+Installation: owner's installed plugin; exact artifact SHA256, source snapshot,
+IDE build, fixtures and execution dates were not supplied. Product version in
+this workstream is 1.0.0, but installed-artifact identity is not independently
+established. This is contextual user verification, not an agent replay of the
+controlled matrix or an assertion that the newly rebuilt fix artifact was tested.
+
+USER-PASS scope (43/45 scenarios, 95.6% of the defined scenario inventory):
+W01-W10; S01-S08; T01-T06; A01; Q01-Q02; C01-C09; N01-N07.
+Given: The owner uses the installed plugin in their IDE.
+When: The owner encounters these scenarios during use.
+Then expected: Their behavior meets expectations.
+Observed: Owner explicitly reports all scenarios other than the two discovered
+UI defects behaved as expected. Status: USER-PASS for the scope above.
+
+Exceptions: A02 / R1-D01 and N08 / R1-D02 remain the two agent-reproduced failures.
+Their fixes and passing targeted agent-native retests are recorded in section 9. No owner installed-user retest of the rebuilt artifact has been reported. Preserve original FAIL evidence.
+A01 USER-PASS refers to the reported usage experience: the previously confirmed
+absence of a configured screen reader still leaves the independent screen-reader
+subvariant BLOCKED. No NVDA execution or source-lock fault result is inferred.
+
+Use separate metrics: user-reported scenario coverage43/45, agent R1 execution
+coverage, automated results, and fix-retest results. Do not combine these into
+an agent-executed or fully instrumented release acceptance percentage.
+
+
+9. R2 - TARGETED FIX RETESTS (2026-11-16)
+
+Plugin1.0.0, ZIP SHA256
+8C0536E09D7CF431D3DA0EF49ACD1D6532447C6126FB05455AEAD91F96663E61.
+Source snapshot: agent-logs/ui-defects-source-manifest.csv. IDE2026.3,
+IU-263.7307.200; Windows, original near-full-screen geometry confirmed by owner,
+Islands Dark/Light, baseline100% zoom, Windows keyboard/mouse automation,
+existing isolated synthetic accounts. No screen reader involved.
+Evidence: agent-logs/ui-defects-native-retest.log; UI tool transcript;
+agent-logs/ui-defects-final-validation.log. No independent screenshot archive.
+
+A02 / R1-D01 targeted theme-transition regression: PASS.
+Given: Fixed widget in isolated IDE, original Islands Dark.
+When: Change Dark -> Light, close Settings without hovering widget; then
+change Light -> Dark and again close Settings without hovering widget.
+Then expected: Ordinary widget text stays readable in both themes.
+Observed: Dark text on light status bar and light text on dark status bar;
+Codex and experimental vendor presentations remained readable. Original Dark
+restored. Original R1 FAIL preserved; reproduced defect is resolved by this retest.
+Implementation resolves Label foreground to an immutable RGB snapshot each
+presentation update, ensuring changed themes invalidate cached ribbon rendering.
+
+N08 / R1-D02 targeted hover-keyboard regression: PASS.
+Given: Project pane focused; pointer moved onto widget without changing focus.
+When: Alt+Right then Alt+Left.
+Then expected: Vendor changes; focused Project view remains unchanged.
+Observed: Codex -> Claude -> Codex, Project pane stays Project throughout.
+Control: move pointer away, Alt+Right switches Project -> Packages, Alt+Left
+restores Project. Normal IDE shortcuts remain available outside widget scope.
+Original R1 FAIL preserved; reproduced defect is resolved by this retest.
+Implementation uses IntelliJ's non-locking event-dispatch hook before IDE shortcut
+handling, removes it on component removal/disposal and consumes chord releases.
+
+Automated validation:256 tests, zero failures/errors; buildPlugin,
+verifyPluginConfiguration and verifyPlugin passed. IDEA263.7307.200 Compatible.
+IntelliJ inspections: changed source/test/build files clean. Plugin Verifier1.411
+explicitly configured after its missing/default dependency blocked validation.
+Version stays1.0.0. README/technical reference updated; no commit/push/publication.
+
+Evidence summary: all other43 scenarios USER-PASS under U1 (owner installed-plugin
+experience); these two reproduced defects fixed and targeted native retests PASS.
+This combination reports the requested functional acceptance at its actual evidence
+tiers, not45 controlled agent-run scenario passes. Independent screen-reader
+subvariant and historical unexecuted controlled variants are not relabelled executed.
+No additional local testing is needed for these two fixes. Future release-candidate
+matrices must still distinguish owner reports, controlled runs and automated checks.
+

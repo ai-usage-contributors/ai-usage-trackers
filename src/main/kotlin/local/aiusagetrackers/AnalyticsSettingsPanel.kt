@@ -30,7 +30,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
     private var updating = false
     val isUpdating: Boolean get() = updating
     private var closed = false
-    val planProfile = JComboBox(QuotaPlanProfile.entries.toTypedArray())
+    val planProfile = JComboBox(QuotaPlanProfile.entries.toTypedArray()).apply { renderer = providerChoiceRenderer() }
     private var lastValidPlan = planProfile.getItemAt(0)
     private val weeklyQuotaLabel = JTextField(WEEKLY_QUOTA)
     private val weeklyResetLabel = JTextField(WEEKLY_RESET)

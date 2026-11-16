@@ -57,7 +57,7 @@ class VendorSettingsTest {
             carousel.configure(linkedMapOf(UsageVendor.CODEX to first, UsageVendor.CLAUDE to second), VendorDisplayState(verticalSeconds = 0))
             assertEquals(Dimension(400, 30), carousel.preferredSize)
             assertEquals(first, carousel.components.single())
-            carousel.actionMap.get("alt RIGHT").actionPerformed(java.awt.event.ActionEvent(carousel, 0, "next"))
+            carousel.navigate(1)
             assertEquals(UsageVendor.CLAUDE, carousel.selected)
             assertEquals(second, carousel.components.single())
             assertEquals(Dimension(400, 30), carousel.preferredSize)

@@ -13,6 +13,12 @@ enum class QuotaPlanProfile(private val label: String) {
     UNKNOWN("Unverified quota scheme");
 
     override fun toString(): String = label
+    val presentationLabel: String get() = when (this) {
+        CLAUDE_WEEKLY -> "Claude (experimental) — weekly only"
+        CLAUDE_WEEKLY_AND_FIVE_HOUR -> "Claude (experimental) — weekly and five-hour"
+        ANTIGRAVITY_REPORTED -> "Antigravity (experimental) — reported pools, unverified boundaries"
+        else -> label
+    }
     fun capabilities(): PlanCapabilities = when (this) {
         CODEX_WEEKLY -> PlanCapabilities.CODEX_WEEKLY
         CODEX_WEEKLY_AND_FIVE_HOUR -> PlanCapabilities(PlanCapabilities.CODEX_WEEKLY.pools +

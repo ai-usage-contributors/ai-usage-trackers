@@ -1,15 +1,13 @@
 # Working instructions
 
-- Communicate in English.
+- AI_NOTICE.md is maintained exclusively by the user. No agent may modify,
+  replace, rename, move, or delete it.
 - All new settings must have on-hover tooltips explaining their purpose and effect.
   Provide tooltips on both the setting label and its input/control, including nested
   editable controls, and provide equivalent accessible descriptions.
 - Read IMPLEMENTATION_HANDOFF.txt before implementation.
-- Every update must yield a new plugin version number; increment it before building
-  the updated package. Very small incremental fixes and bugfixes increment the
-  patch version. New features increment the minor version and reset the patch
-  version to zero. Remain below 1.0 until the user explicitly decides the project
-  is ready for 1.0; do not advance to 1.0 automatically.
+- Keep the plugin version at 1.0.0 until the user explicitly requests a version
+  change. Do not increment it automatically for updates or builds.
 - Work in this repository; keep the upstream Codex Usage checkout unchanged.
 - Verify existing code references with tool output; verify line numbers before citing them.
 - Keep README.md and TECHNICAL.md current when behavior, requirements, settings,
@@ -45,6 +43,20 @@
   calendars. Apply weekday filtering only when explicitly selected for a tracker.
 - Tests must cover meaningful parser and time-boundary behavior; use a controllable clock and zone provider.
 - Run native/live-plugin or UI testing only when the user explicitly requests it.
+- For every future release, maintain docs/native-ui-test-plan.txt and the
+  versioned Given/When/Then acceptance record in docs/native-ui-testing.txt.
+  Expand the tested scope for new or changed features, settings, integrations,
+  fixes and lifecycle behavior; retain stable scenario IDs and previous results.
+  For each execution, record plugin version, artifact SHA256 and source revision
+  (or identified local snapshot), date, IDE version/build, OS, relevant display/input
+  environment, fixtures, expected and observed behavior, status and evidence.
+  Keep planned expectations separate from observations. Never carry a previous
+  release's pass forward without rerunning it on the release candidate and its
+  supported IDE targets, even when the plugin version number is unchanged.
+  Native execution still requires the explicit authorization above. If unavailable,
+  record pending/blocked scope and do not claim complete native release acceptance.
+  Synthetic vendor UI passes do not establish real-subscription support; keep
+  Claude and Antigravity experimental until the documented subscriber checks pass.
 - Performance testing focuses on underlying usage collection and calculation,
   not native UI behavior. Defer performance measurements when the user requests it.
 - Before reporting implementation complete: run the full Gradle test suite, buildPlugin,

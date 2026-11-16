@@ -73,8 +73,11 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         // WAL permits date/zone refresh queries while a large file is being imported.
         connection.createStatement()
             .use { it.execute("PRAGMA journal_mode=WAL"); it.execute("PRAGMA synchronous=FULL") }
-        connection.createStatement()
-            .use { it.execute("CREATE TEMP TABLE staged (seq INTEGER PRIMARY KEY, seconds INTEGER NOT NULL, nanos INTEGER NOT NULL, total INTEGER NOT NULL, signature TEXT NOT NULL)") }
+        connection.createStatement().use {
+            it.execute("PRAGMA temp_store=FILE")
+            it.execute("CREATE TEMP TABLE staged (seq INTEGER PRIMARY KEY, seconds INTEGER NOT NULL, nanos INTEGER NOT NULL, total INTEGER NOT NULL, signature TEXT NOT NULL)")
+            it.execute("CREATE TEMP TABLE staged_provider (key TEXT PRIMARY KEY,seconds INTEGER NOT NULL,nanos INTEGER NOT NULL,data TEXT NOT NULL,precision TEXT NOT NULL)")
+        }
     }
 
     fun acknowledgedIssues(page: String): Set<String> =
@@ -112,12 +115,44 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
     ) {
         if (meta("provider_account") == null) bindAccount(profile)
         require(meta("provider_account") == "${profile.vendor.name}/${profile.id}") { "Ledger belongs to another account" }
-        val batch = UsageSourceRegistry.read(file, profile, checkCancelled)
-        val after = Files.readAttributes(file, BasicFileAttributes::class.java)
-        check(after.size() == attrs.size() && after.lastModifiedTime() == attrs.lastModifiedTime()) { "Report changed during reading" }
         transaction {
-            batch.tokens.forEach { importToken(it, profile, checkCancelled) }
-            for ((pool, remainingPercent, resetsAt, observedAt, capturedAt, disabled) in batch.quotas) {
+            connection.createStatement().use { it.executeUpdate("DELETE FROM staged_provider WHERE key IS NOT NULL") }
+            UsageSourceRegistry.stream(file, profile, checkCancelled) { batch ->
+                batch.tokens.forEach(::stageProviderToken)
+                importProviderQuotas(batch.quotas, checkCancelled)
+            }
+            connection.createStatement().use { query ->
+                query.executeQuery("SELECT key,seconds,nanos,data,precision FROM staged_provider").use { rows ->
+                    while (rows.next()) importToken(ProviderTokenEvent(rows.getString(1),
+                        Instant.ofEpochSecond(rows.getLong(2), rows.getInt(3).toLong()),
+                        gson.fromJson(rows.getString(4), RequestCounters::class.java), rows.getString(5)), profile, checkCancelled)
+                }
+            }
+            val after = Files.readAttributes(file, BasicFileAttributes::class.java)
+            check(after.size() == attrs.size() && after.lastModifiedTime() == attrs.lastModifiedTime()) { "Report changed during reading" }
+            connection.prepareStatement("INSERT INTO provider_files VALUES(?,?,?) ON CONFLICT(path) DO UPDATE SET size=excluded.size,modified=excluded.modified")
+                .use {
+                    it.setString(1, file.toString()); it.setLong(2, attrs.size()); it.setString(3, attrs.lastModifiedTime().toString()); it.executeUpdate()
+                }
+            setMeta("analytics_revision", Math.addExact(meta("analytics_revision")?.toLong() ?: 0L, 1L).toString())
+            checkCancelled()
+        }
+    }
+
+    @Suppress("SqlResolve") // Connection-local staging uses the same import transaction.
+    private fun stageProviderToken(event: ProviderTokenEvent) {
+        val previous = stringQuery("SELECT data FROM staged_provider WHERE key=?", event.key)
+            ?.let { gson.fromJson(it, RequestCounters::class.java) }
+        require(previous == null || (previous.input == event.counters.input && previous.cached == event.counters.cached && previous.output <= event.counters.output)) { "Conflicting request revisions" }
+        connection.prepareStatement("INSERT INTO staged_provider VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET seconds=excluded.seconds,nanos=excluded.nanos,data=excluded.data,precision=excluded.precision").use {
+            it.setString(1, event.key); it.setLong(2, event.time.epochSecond); it.setInt(3, event.time.nano)
+            it.setString(4, gson.toJson(event.counters)); it.setString(5, event.precision); it.executeUpdate()
+        }
+    }
+
+    @Suppress("SqlResolve") // Private ledger schema, called inside the file transaction.
+    private fun importProviderQuotas(quotas: List<ProviderQuotaReport>, checkCancelled: () -> Unit) {
+            for ((pool, remainingPercent, resetsAt, observedAt, capturedAt, disabled) in quotas) {
                 checkCancelled()
                 require(capturedAt != Instant.EPOCH) { "Quota capture has no acquisition timestamp" }
                 val duration = pool.duration?.toMinutes()?.toInt() ?: 0
@@ -125,7 +160,7 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
                     pool.id, remainingPercent?.let { 100 - it }, resetsAt?.epochSecond,
                     pool.id, duration, freshnessUnknown = observedAt == null, disabled = disabled
                 )
-                val fingerprint = hash(gson.toJson(usage))
+                val fingerprint = hash(gson.toJson(usage)) + ":$capturedAt"
                 val key = "provider-quota:${hash(pool.id)}"
                 connection.prepareStatement("INSERT OR IGNORE INTO sessions VALUES(?,?,?,0)").use {
                     it.setString(1, key); it.setString(2, fingerprint); it.setString(
@@ -133,7 +168,8 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
                     "[]"
                 ); it.executeUpdate()
                 }
-                // Repeated cached callbacks retain the first acquisition time for that value.
+                // Acquisition identity preserves transitions back to a prior value.
+                // Snapshot selection coalesces only consecutive equal provider values.
                 analytics.clear()
                 analytics.stage(
                     AnalyticsRecord(
@@ -150,16 +186,6 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
                     ) == null
                 ) analytics.accept(key)
             }
-            connection.prepareStatement("INSERT INTO provider_files VALUES(?,?,?) ON CONFLICT(path) DO UPDATE SET size=excluded.size,modified=excluded.modified")
-                .use {
-                    it.setString(1, file.toString()); it.setLong(2, attrs.size()); it.setString(
-                    3,
-                    attrs.lastModifiedTime().toString()
-                ); it.executeUpdate()
-                }
-            setMeta("analytics_revision", Math.addExact(meta("analytics_revision")?.toLong() ?: 0L, 1L).toString())
-            checkCancelled()
-        }
     }
 
     @Suppress("SqlResolve") // Runtime ledger schema; statements execute transactionally in integration tests.

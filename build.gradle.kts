@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
+
 plugins {
     kotlin("jvm") version "2.4.0"
     id("org.jetbrains.intellij.platform") version "2.19.0"
@@ -18,7 +20,9 @@ dependencies {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
     intellijPlatform {
-        intellijIdea("2026.2.3")
+        val developmentIdePath = providers.gradleProperty("runIdePath").orNull
+        if (developmentIdePath != null) local(file(developmentIdePath)) else intellijIdea("2026.3")
+        pluginVerifier("1.411")
     }
     testImplementation(kotlin("test"))
 }
@@ -45,6 +49,23 @@ tasks.test {
     exclude("**/PerformanceBaselineTest.class")
 }
 
+val runIde20263 by intellijPlatformTesting.runIde.registering {
+    version = "2026.3"
+    localPath = providers.gradleProperty("runIdePath").map { layout.projectDirectory.dir(it) }
+    sandboxDirectory = layout.projectDirectory.dir(".intellijPlatform/sandbox/ai-usage-trackers/IU-2026.3")
+    task {
+        argumentProviders.add(CommandLineArgumentProvider {
+            tasks.named<RunIdeTask>("runIde").get().args
+        })
+    }
+}
+
+tasks.named<RunIdeTask>("runIde") {
+    // Preserve the standard command and --args option while using a separate runtime SDK.
+    enabled = false
+    setDependsOn(listOf(runIde20263))
+}
+
 tasks.register<Test>("performanceBaseline") {
     description = "Measures synthetic usage workloads; does not use personal logs."
     group = "verification"
@@ -60,14 +81,14 @@ tasks.register<Test>("performanceBaseline") {
 intellijPlatform {
     pluginVerification {
         ides {
-            create(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdea, "2026.2.3")
-            create(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdea, "2026.2.4")
-            providers.gradleProperty("verificationIdePath").orNull?.let { local(file(it)) }
+            val verificationIdePath = providers.gradleProperty("verificationIdePath").orNull
+            if (verificationIdePath != null) local(file(verificationIdePath)) else
+                create(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdea, "2026.3")
         }
     }
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "262"
+            sinceBuild = "263"
             untilBuild = "263.*"
         }
     }

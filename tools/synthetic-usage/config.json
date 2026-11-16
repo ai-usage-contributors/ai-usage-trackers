@@ -1,0 +1,35 @@
+{
+  "now_utc": null,
+  "codex": {
+    "requests": [
+      {"age_minutes": 5, "input_tokens": 10000, "cached_input_tokens": 2000, "output_tokens": 2000, "reasoning_output_tokens": 500},
+      {"age_minutes": 125, "input_tokens": 20000, "output_tokens": 4000},
+      {"age_minutes": 1565, "input_tokens": 30000, "output_tokens": 6000}
+    ],
+    "quotas": {
+      "weekly": {"used_percent": 42, "reset_in_minutes": 4320, "age_minutes": 0},
+      "five_hour": {"used_percent": 18, "reset_in_minutes": 120, "age_minutes": 0}
+    }
+  },
+  "claude": {
+    "requests": [
+      {"age_minutes": 5, "input_tokens": 5000, "cached_input_tokens": 1000, "output_tokens": 1000},
+      {"age_minutes": 125, "input_tokens": 10000, "output_tokens": 2000},
+      {"age_minutes": 1565, "input_tokens": 15000, "output_tokens": 3000}
+    ],
+    "quotas": {
+      "weekly": {"used_percent": 65, "reset_in_minutes": 2880, "age_minutes": 0},
+      "five_hour": {"used_percent": 27, "reset_in_minutes": 90, "age_minutes": 0}
+    }
+  },
+  "antigravity": {
+    "requests": [
+      {"age_minutes": 5, "input_tokens": 2000, "cached_input_tokens": 400, "output_tokens": 400, "reasoning_output_tokens": 100},
+      {"age_minutes": 125, "input_tokens": 4000, "output_tokens": 800},
+      {"age_minutes": 1565, "input_tokens": 6000, "output_tokens": 1200}
+    ],
+    "quotas": {
+      "demo-pool": {"used_percent": 35, "reset_in_minutes": 180, "age_minutes": 0}
+    }
+  }
+}

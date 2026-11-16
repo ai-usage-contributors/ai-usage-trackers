@@ -6,6 +6,7 @@ import java.awt.Color
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelEvent
 import javax.swing.JButton
 import javax.swing.SwingUtilities
 
@@ -18,6 +19,9 @@ internal class RibbonValueButton(
     action: () -> Unit,
 ) : JButton(), IdeGlassPane.TopComponent {
     private var prefix = ""
+    override fun createToolTip(): javax.swing.JToolTip = super.createToolTip().apply {
+        putClientProperty("html.disable", true)
+    }
     init {
         this.font = font
         isOpaque = false
@@ -31,7 +35,8 @@ internal class RibbonValueButton(
         render()
     }
 
-    override fun canBePreprocessed(e: MouseEvent): Boolean = !ribbonGesture || !SwingUtilities.isLeftMouseButton(e)
+    override fun canBePreprocessed(e: MouseEvent): Boolean =
+        !ribbonGesture || (e !is MouseWheelEvent && !SwingUtilities.isLeftMouseButton(e))
     fun measuredWidth(): Int = getFontMetrics(font).stringWidth(value.displayText()) + insets.left + insets.right
     override fun getPreferredSize(): Dimension = super.getPreferredSize().apply {
         width = measuredWidth() + getFontMetrics(font).stringWidth(prefix)

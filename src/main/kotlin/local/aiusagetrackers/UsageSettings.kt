@@ -83,7 +83,7 @@ class UsageSettings : PersistentStateComponent<UsageSettings.SettingsState> {
     }
 }
 
-class UsageConfigurable : Configurable {
+class UsageConfigurable : Configurable, Configurable.NoScroll {
     private var editor: TrackerSettingsPanel? = null
     override fun getDisplayName(): String = "AI Usage Trackers"
     override fun createComponent(): JComponent = TrackerSettingsPanel(service<UsageSettings>().ribbonWidths).also { editor = it; reset() }

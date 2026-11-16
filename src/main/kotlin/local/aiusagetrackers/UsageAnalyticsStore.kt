@@ -153,11 +153,25 @@ internal class UsageAnalyticsStore(private val connection: Connection) {
         val quotas = mutableListOf<QuotaObservation>()
         connection.prepareStatement(
             """
-            WITH ranked AS (
+            WITH observations AS (
+                SELECT *,JSON_REMOVE(data,'$.capturedAt') AS semantic FROM analytics
+                WHERE kind='quota' AND conflict=0 AND (seconds,nanos)<=(?,?)
+            ), changes AS (
+                SELECT *,CASE WHEN session_key LIKE 'provider-quota:%' AND
+                    LAG(semantic) OVER(
+                        PARTITION BY session_key,JSON_EXTRACT(data,'$.bucket'),COALESCE(JSON_EXTRACT(data,'$.windowMinutes'),10080),JSON_EXTRACT(data,'$.window')
+                        ORDER BY seconds,nanos,key)=semantic THEN 0 ELSE 1 END AS changed
+                FROM observations
+            ), runs AS (
+                SELECT *,SUM(changed) OVER(
+                    PARTITION BY session_key,JSON_EXTRACT(data,'$.bucket'),COALESCE(JSON_EXTRACT(data,'$.windowMinutes'),10080),JSON_EXTRACT(data,'$.window')
+                    ORDER BY seconds,nanos,key ROWS UNBOUNDED PRECEDING) AS run
+                FROM changes
+            ), ranked AS (
                 SELECT session_key,seconds,nanos,data,ROW_NUMBER() OVER(
                     PARTITION BY session_key,JSON_EXTRACT(data,'$.bucket'),COALESCE(JSON_EXTRACT(data,'$.windowMinutes'),10080),JSON_EXTRACT(data,'$.window')
-                    ORDER BY seconds DESC,nanos DESC,key) AS rank
-                FROM analytics WHERE kind='quota' AND conflict=0 AND (seconds,nanos)<=(?,?)
+                    ORDER BY run DESC,seconds,nanos,key) AS rank
+                FROM runs
             ) SELECT session_key,seconds,nanos,data FROM ranked WHERE rank=1 ORDER BY session_key,data
         """.trimIndent()
         ).use {

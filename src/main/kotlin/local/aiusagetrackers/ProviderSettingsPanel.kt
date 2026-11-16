@@ -17,13 +17,14 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 
 /** Draft-only editor. Applying settings never changes external vendor configuration. */
-class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefaults: (String) -> Unit) : JPanel(BorderLayout()) {
+class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefaults: (String) -> Unit,
+    private val accountInUse: (String) -> Boolean = { false }) : JPanel(BorderLayout()) {
     private var draft = ProviderConfiguration()
     private var loading = false
     private val form = SettingsForm()
     val advanced = SettingsForm()
     var openAdvanced: () -> Unit = {}
-    private val advancedVendor = JComboBox(UsageVendor.entries.toTypedArray())
+    private val advancedVendor = JComboBox(UsageVendor.entries.toTypedArray()).apply { renderer = providerChoiceRenderer() }
     private val sourceLabel = JLabel()
     private val captureLabel = JLabel()
     private val sourceInput = JPanel(BorderLayout(4, 4))
@@ -34,17 +35,19 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
     private val export = JButton("Export capture helper and instructions…")
     private var editQueued = false
     private val displayed = JComboBox<UsageVendor>()
-    private val editorVendor = JComboBox(UsageVendor.entries.toTypedArray())
+    private val editorVendor = JComboBox(UsageVendor.entries.toTypedArray()).apply { renderer = providerChoiceRenderer() }
     private val track = JCheckBox("Track usage")
     private val label = JTextField()
     private val account = JComboBox<AccountChoice>()
+    private val addAccount = JButton("Add account")
+    private val removeAccount = JButton("Remove account")
     private val alias = JTextField()
     private val locations = JTextArea(3, 40)
     private val capture = JTextField()
     private val verified = JCheckBox("I verified these sources belong to this account")
     private val status = JLabel()
     private val carousel = JCheckBox("Multi-vendor carousel")
-    private val members = UsageVendor.entries.associateWith { JCheckBox(it.toString()) }
+    private val members = UsageVendor.entries.associateWith { JCheckBox(it.toString()).apply { putClientProperty("html.disable", true) } }
     private val motion = JComboBox(RibbonScrollMode.entries.toTypedArray())
     private val speed = JSpinner(SpinnerNumberModel(30, 0, 200, 5))
     private val horizontal = JSpinner(SpinnerNumberModel(8, 0, 300, 1))
@@ -80,14 +83,30 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         })
         advanced.addRow(JLabel("Configure vendor"), advancedVendor)
         advanced.addRow(JLabel("Account to configure and display"), account)
-        advanced.addRow(JLabel("Accounts"), JButton("Add account").apply {
+        advanced.addRow(JLabel("Accounts"), JPanel(java.awt.GridLayout(1, 2, 4, 0)).apply {
+            SettingsHelp.attach(this, "Add an account or remove an unused account from the settings draft. Removing an account retains imported history.")
+            add(addAccount.apply {
             SettingsHelp.attach(this, "Add a separate local account configuration for this vendor.")
             addActionListener {
+            if (draft.profiles.size >= 32) return@addActionListener
             saveEditor()
-            val p = ProviderProfile(vendor = vendor, alias = "$vendor account ${draft.profiles.count { it.vendor == vendor } + 1}")
+            val p = ProviderProfile(vendor = vendor, alias = "${vendor.displayName} account ${draft.profiles.count { it.vendor == vendor } + 1}")
             draft.profiles.add(p); draft.vendors.first { it.vendor == vendor }.accountId = p.id
             loadEditor(); notifyChanged()
         } })
+            add(removeAccount.apply {
+                SettingsHelp.attach(this, "Remove this account from the settings draft after reassigning or removing its trackers. Imported history is retained; the original Codex and last account for each vendor are protected.")
+                addActionListener {
+                    saveEditor()
+                    try {
+                        draft.removeAccount(profileId, accountInUse(profileId))
+                        loadEditor(); notifyChanged()
+                    } catch (failure: IllegalArgumentException) {
+                        com.intellij.openapi.ui.Messages.showErrorDialog(this, failure.message ?: "Account cannot be removed", "Remove Account")
+                    }
+                }
+            })
+        })
         advanced.addRow(JLabel("Account alias"), alias)
         locations.border = com.intellij.util.ui.JBUI.Borders.empty(4)
         sourceInput.add(JBScrollPane(locations), BorderLayout.CENTER)
@@ -189,16 +208,17 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         capture.text = path.toString()
     }
     private fun refreshVendorHelp() {
-        SettingsHelp.detail(sourceInput, when (vendor) {
+        val notice = if (vendor.experimental) "Experimental support. Synthetic tests pass, but contributors with a subscription must validate actual usage and quotas before verified support can be claimed. " else ""
+        SettingsHelp.detail(sourceInput, notice + when (vendor) {
             UsageVendor.CODEX -> "Use one Codex home per line, containing sessions and archived_sessions. Examples: C:\\Users\\Alex\\.codex or /home/alex/.codex. The original account keeps automatic discovery; additional accounts need explicit, separate homes."
             UsageVendor.CLAUDE -> "Choose this account's native usage JSONL files or projects folder, including subagents. Examples: C:\\Users\\Alex\\.claude\\projects or /home/alex/.claude/projects. These logs supply tokens; quota reports use optional capture separately."
             UsageVendor.ANTIGRAVITY -> "Use sanitized helper output for completed headless DONE steps. Example folder: C:\\UsageCaptures\\antigravity-personal or /home/alex/usage-captures/antigravity-personal. Ordinary interactive, desktop and ACP token traffic is not covered."
         })
-        SettingsHelp.detail(captureInput, when (vendor) {
+        SettingsHelp.detail(captureInput, notice + when (vendor) {
             UsageVendor.CLAUDE -> "Optional status-line quota reports from this account's helper. Example: C:\\UsageCaptures\\claude-personal or /home/alex/usage-captures/claude-personal. Captures can be cached; capture time does not prove a current provider balance."
             else -> "Helper output for this account's quota reports and completed headless token steps. Example: C:\\UsageCaptures\\antigravity-personal or /home/alex/usage-captures/antigravity-personal. Keep accounts separate. Reported pool names do not establish weekly resets."
         })
-        SettingsHelp.detail(setup, when (vendor) {
+        SettingsHelp.detail(setup, notice + when (vendor) {
             UsageVendor.CODEX -> "No capture helper is needed. Keep automatic discovery for the original Codex account, or configure explicit home folders for additional accounts. Verify each source belongs to the intended account."
             UsageVendor.CLAUDE -> "Export the helper, then manually compose it with Claude's documented status-line command, preserving any existing renderer. Token history comes from the usage logs above. Callbacks are activity-driven, not live idle quota polling. Full commands are in the exported README."
             UsageVendor.ANTIGRAVITY -> "Export the helper for optional status-line quota capture. For token steps, capture stream-json from an already intended headless task; do not run a model just to collect usage. Preserve any existing status renderer. Full commands and coverage limits are in the exported README."
@@ -239,23 +259,26 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         profileId = p.id
         editorVendor.selectedItem = vendor; advancedVendor.selectedItem = vendor
         track.isSelected = v.tracking; label.text = v.label
-        updateSettingsChoices(account, draft.profiles.filter { it.vendor == vendor }.map { AccountChoice(it.id, it.alias) }, AccountChoice(p.id, p.alias))
+        updateSettingsChoices(account, draft.profiles.filter { it.vendor == vendor }.map { AccountChoice(it.id, it.vendor.supportLabel(it.alias)) }, AccountChoice(p.id, p.vendor.supportLabel(p.alias)))
         alias.text = p.alias; locations.text = p.locations; capture.text = p.captureDirectory; verified.isSelected = p.verified
         loading = false; refreshDisplay()
     }
     private fun refreshDisplay() {
         loading = true
+        addAccount.isEnabled = draft.profiles.size < 32
+        removeAccount.isEnabled = profileId != ProviderProfile.LEGACY_CODEX && draft.profiles.count { it.vendor == vendor } > 1
         val eligible = draft.eligible()
         updateSettingsChoices(displayed, eligible, draft.display.selected.takeIf { it in eligible } ?: eligible.firstOrNull())
-        updateSettingsChoices(account, draft.profiles.filter { it.vendor == vendor }.map { AccountChoice(it.id, it.alias) }, draft.account(vendor)?.let { AccountChoice(it.id, it.alias) })
+        updateSettingsChoices(account, draft.profiles.filter { it.vendor == vendor }.map { AccountChoice(it.id, it.vendor.supportLabel(it.alias)) }, draft.account(vendor)?.let { AccountChoice(it.id, it.vendor.supportLabel(it.alias)) })
         displayed.repaint()
         displayed.isEnabled = !draft.display.carousel
         status.text = if (draft.account(vendor)?.configured() == true) "Sources mapped; inspect Usage Info for import and quota availability" else "Setup/verified account mapping required"
+        if (vendor.experimental) status.text = "Experimental — ${if (draft.account(vendor)?.configured() == true) "sources mapped" else "setup required"}; subscription validation pending"
         carousel.isSelected = draft.display.carousel
         sourceLabel.text = when (vendor) {
             UsageVendor.CODEX -> "Codex home folders"
-            UsageVendor.CLAUDE -> "Claude usage log files or folders"
-            UsageVendor.ANTIGRAVITY -> "Antigravity captured usage files or folders"
+            UsageVendor.CLAUDE -> "Claude (experimental) usage log files or folders"
+            UsageVendor.ANTIGRAVITY -> "Antigravity (experimental) captured usage files or folders"
         }
         captureLabel.text = if (vendor == UsageVendor.CLAUDE) "Quota capture folder" else "Quota and token capture folder"
         SettingsHelp.attach(sourceInput, "Enter one absolute ${if (vendor == UsageVendor.CODEX) "Codex home folder" else "usage source path"} per line.")

@@ -27,57 +27,36 @@ interface UsageSource {
 object UsageSourceRegistry {
     private val sources = listOf(ClaudeUsageSource(), AntigravityUsageSource()).associateBy { it.vendor }
     fun source(vendor: UsageVendor): UsageSource = sources.getValue(vendor)
-    const val MAX_FILE_BYTES = 32L * 1024 * 1024
     const val MAX_LINE_CHARS = 1024 * 1024
-    fun read(file: Path, profile: ProviderProfile, checkCancelled: () -> Unit = {}): ProviderBatch {
-        require(Files.size(file) <= MAX_FILE_BYTES) { "Report exceeds 32 MiB; split or rotate it" }
-        val tokens = linkedMapOf<String, ProviderTokenEvent>()
-        val quotas = mutableListOf<ProviderQuotaReport>()
-        // A bounded snapshot is re-read only when source metadata changes. Facts and that
-        // completed snapshot cursor commit together; partial trailing records are retried.
+    fun stream(file: Path, profile: ProviderProfile, checkCancelled: () -> Unit = {}, consume: (ProviderBatch) -> Unit) {
+        // One bounded record at a time; the caller stages facts transactionally on disk.
         Files.newBufferedReader(file).use { reader ->
             var line = StringBuilder()
             while (true) {
                 checkCancelled()
                 val c = reader.read()
                 if (c == -1) {
-                    consumeNonBlank(line, profile, tokens, quotas)
+                    consumeNonBlank(line, profile, consume)
                     break
                 }
                 if (c == '\n'.code) {
-                    consumeNonBlank(line, profile, tokens, quotas); line = StringBuilder()
+                    consumeNonBlank(line, profile, consume); line = StringBuilder()
                 } else {
                     require(line.length < MAX_LINE_CHARS) { "Report record exceeds 1 MiB" }; line.append(c.toChar())
                 }
             }
         }
-        return ProviderBatch(tokens.values.toList(), quotas)
     }
 
     private fun consumeNonBlank(
         line: StringBuilder,
         profile: ProviderProfile,
-        tokens: MutableMap<String, ProviderTokenEvent>,
-        quotas: MutableList<ProviderQuotaReport>
+        consume: (ProviderBatch) -> Unit
     ) {
-        if (line.isNotBlank()) consume(line.toString(), profile, tokens, quotas)
-    }
-
-    private fun consume(
-        text: String,
-        profile: ProviderProfile,
-        tokens: MutableMap<String, ProviderTokenEvent>,
-        quotas: MutableList<ProviderQuotaReport>
-    ) {
-        val row = JsonParser.parseString(text).asJsonObject
+        if (line.isBlank()) return
+        val row = JsonParser.parseString(line.toString()).asJsonObject
         val captured = row.get("captured_at")?.asString?.let(Instant::parse) ?: Instant.EPOCH
-        val batch = source(profile.vendor).parse(row, captured, profile)
-        batch.tokens.forEach { next ->
-            val previous = tokens[next.key]
-            require(previous == null || (previous.counters.input == next.counters.input && previous.counters.output <= next.counters.output)) { "Conflicting request revisions" }
-            tokens[next.key] = next
-        }
-        quotas.addAll(batch.quotas)
+        consume(source(profile.vendor).parse(row, captured, profile))
     }
 }
 

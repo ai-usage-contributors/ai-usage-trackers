@@ -34,7 +34,7 @@ class ProviderMonitorTest {
                 UsageMonitor(CoroutineScope(job + Dispatchers.IO), Clock.fixed(now, ZoneOffset.UTC), { ZoneOffset.UTC },
                     { temp.root.toPath().resolve("${profile.id}.sqlite") }, { listOf(TrackerDefinition(accountId = profile.id)) },
                     { Discovery(emptySet(), emptySet()) }, { profile.analytics },
-                    customCollect = { database, at, cancelled -> ProviderUsageCollector(database).collect(profile, at, cancelled) }, releaseDriverOnClose = false)
+                    customCollect = { database, at, completedAt, cancelled -> ProviderUsageCollector(database).collect(profile, at, cancelled, completedAt) }, releaseDriverOnClose = false)
             }
             val snapshots = monitors.map { monitor -> withTimeout(30.seconds) { monitor.snapshots.first { !it.loading && it.storedEvents == 1L } } }
             assertEquals(listOf(101L, 102L), snapshots.map { it.trackers.single().total })

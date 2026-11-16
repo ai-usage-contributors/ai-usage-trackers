@@ -1,5 +1,10 @@
 ADDING A BUILT-IN USAGE PROVIDER
 
+Claude and Antigravity support is experimental. The adapters are theoretically
+implemented and synthetic tests pass; contributors with subscriptions must test
+actual logs, capture setup, totals, quotas/resets and account isolation before
+verified support can be claimed. See TECHNICAL.md section 5. Do not share credentials.
+
 AI Usage Trackers production code is in src/main/kotlin/local/aiusagetrackers/;
 tests use the matching src/test/kotlin/local/aiusagetrackers/ package directory.
 
@@ -53,7 +58,7 @@ Admission requirements:
   source configuration; Air chat/ACP, remote/cloud and desktop paths need separate
   evidence. Model name is not proof of billing vendor or subscription identity.
 
-Coverage in 0.18.0:
+Implemented adapter scope (Claude and Antigravity remain experimental):
 Codex: existing local sessions/archived_sessions collector, legacy quota support.
 Claude: configured native assistant JSONL, nested subagents; optional status-line
 quota capture. Incomplete or conflicting histories are diagnosed and retained.

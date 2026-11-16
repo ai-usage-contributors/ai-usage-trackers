@@ -1,10 +1,10 @@
 package local.aiusagetrackers
 
+import com.intellij.ide.IdeEventQueue
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.KeyboardFocusManager
-import java.awt.event.ActionEvent
 import java.awt.image.BufferedImage
 import javax.swing.*
 
@@ -70,18 +70,25 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
     var selected: UsageVendor? = null
         private set
     private val timer = Timer(25) { tick() }
+    private val navigationKeys = WidgetNavigationKeys({
+        val manager = KeyboardFocusManager.getCurrentKeyboardFocusManager()
+        isShowing && SwingUtilities.getWindowAncestor(this) === manager.focusedWindow &&
+            !paused() && MenuSelectionManager.defaultManager().selectedPath.isEmpty() &&
+            (getMousePosition(true) != null || manager.focusOwner?.let { SwingUtilities.isDescendingFrom(it, this) } == true)
+    }, ::navigate)
+    private val navigationDispatcher = object : IdeEventQueue.NonLockedEventDispatcher {
+        override fun dispatch(e: java.awt.AWTEvent): Boolean =
+            e is java.awt.event.KeyEvent && navigationKeys.dispatchKeyEvent(e)
+    }
+    private var navigationRegistered = false
 
     init {
         isOpaque = false; isFocusable = true
-        for ((key, step) in listOf("alt LEFT" to -1, "alt RIGHT" to 1)) {
-            getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(key), key)
-            actionMap.put(key, object : AbstractAction() {
-                override fun actionPerformed(e: ActionEvent) {
-                    tick(step)
-                }
-            })
-        }
-        toolTipText = "Vendor carousel; Alt+Left/Right changes vendor. Inner ribbon gestures remain independent."
+        toolTipText = "Alt+Left/Right changes agents while hovering or focusing the widget. Scroll or drag the agent label to change agents; ribbon gestures change its entries."
+    }
+
+    fun navigate(step: Int) {
+        tick(step)
     }
 
     fun configure(items: Map<UsageVendor, JComponent>, state: VendorDisplayState) {
@@ -141,7 +148,7 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
             1,
             options.speed
         )).coerceAtLeast(160_000_000L)
-        getAccessibleContext().accessibleName = "Displayed vendor: ${next ?: "none"}"
+        getAccessibleContext().accessibleName = "Displayed vendor: ${next?.presentationLabel ?: "none"}"
         revalidate()
     }
 
@@ -174,14 +181,29 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
     }
 
     override fun addNotify() {
-        super.addNotify(); timer.start()
+        super.addNotify()
+        IdeEventQueue.getInstance().addDispatcher(navigationDispatcher, null as com.intellij.openapi.Disposable?)
+        navigationRegistered = true
+        timer.start()
     }
 
     override fun removeNotify() {
-        timer.stop(); super.removeNotify()
+        timer.stop()
+        removeNavigationDispatcher()
+        navigationKeys.reset()
+        super.removeNotify()
     }
 
     override fun close() {
+        removeNavigationDispatcher()
+        navigationKeys.reset()
         timer.stop(); outgoing = null; transitionChanged(false); transitionChanged = {}; removeAll(); views.clear()
+    }
+
+    private fun removeNavigationDispatcher() {
+        if (navigationRegistered) {
+            IdeEventQueue.getInstance().removeDispatcher(navigationDispatcher)
+            navigationRegistered = false
+        }
     }
 }

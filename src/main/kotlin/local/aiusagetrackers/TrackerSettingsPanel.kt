@@ -59,7 +59,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private val lastRequest = JCheckBox("Show last request", false)
     private var quotaAccountId = ProviderProfile.LEGACY_CODEX
     private val analyticsEditor = AnalyticsSettingsPanel { service<UsageService>().snapshot(quotaAccountId) }
-    private val generalEditor = ProviderSettingsPanel(::providersChanged, ::addDefaultTrackers)
+    private val generalEditor = ProviderSettingsPanel(::providersChanged, ::addDefaultTrackers) { id -> trackers().any { it.accountId == id } }
     private val trackerAccount = JComboBox<AccountChoice>()
     private val trackerPool = JComboBox<AccountChoice>().apply { isEditable = true }
     private val quotaAccount = JComboBox<AccountChoice>()
@@ -81,11 +81,12 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         val config = generalEditor.value()
         val binding = list.selectedValue?.accountId
         val oldQuota = quotaAccountId
-        val choices = config.profiles.map { AccountChoice(it.id, "${it.vendor}: ${it.alias}") }
+        val choices = config.profiles.map { AccountChoice(it.id, "${it.vendor.presentationLabel}: ${it.alias}") }
         updateSettingsChoices(trackerAccount, choices, choices.firstOrNull { it.id == binding })
-        updateSettingsChoices(quotaAccount, choices, choices.firstOrNull { it.id == oldQuota })
+        updateSettingsChoices(quotaAccount, choices, choices.firstOrNull { it.id == oldQuota } ?: choices.firstOrNull())
         providerLoading = false
         if (!loading) {
+            commitQuotaAccountSelection()
             updateColorControls(); refreshWidgetPreview()
         }
     }
@@ -667,7 +668,10 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
                     refreshWidgetPreview()
                 }
             }
-            trackerColors.addRow(JLabel(tracker.name), toggle)
+            trackerColors.addRow(JLabel().apply {
+                putClientProperty("html.disable", true)
+                text = tracker.name
+            }, toggle)
         }
         trackerColors.isVisible = coloringEnabled.isSelected && trackerColors.componentCount > 0
         trackerColors.revalidate(); trackerColors.repaint()

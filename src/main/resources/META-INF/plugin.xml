@@ -1,18 +1,36 @@
-<idea-plugin>
+<idea-plugin url="https://github.com/andrasballai-guidance/ai-usage-trackers">
     <id>local.codexusage.daily</id>
     <name>AI Usage Trackers</name>
-    <vendor>AI Usage Trackers contributors</vendor>
+    <vendor url="https://github.com/andrasballai-guidance/ai-usage-trackers" email="ai.usage.contributors@gmail.com">AI Usage Trackers contributors</vendor>
     <description><![CDATA[
-        Track locally recorded AI token usage with persistent history and configurable status-bar trackers.
-        Includes Codex logs, Claude assistant logs and supported Antigravity capture files.
-        Choose calendar periods, elapsed durations or supported provider reset-aligned weeks.
-        Shows recorded request usage and quota percentages/reset times where available.
-        Reads local logs and capture files without model calls or telemetry; coverage depends on the source.
+        <p>Track local AI token usage in the IntelliJ IDEA status bar with persistent history
+        and configurable trackers. Start with Today and This week, or choose calendar periods,
+        rolling durations and supported provider reset-aligned weeks.</p>
+        <ul>
+            <li>Read Codex logs, with experimental Claude assistant-log and Antigravity capture support.</li>
+            <li>Keep accounts separate and switch between enabled vendors or rotate them in a carousel.</li>
+            <li>Customize colors, fonts and the scrolling ribbon with a settings preview.</li>
+            <li>Show the last request and quota percentages and reset times where available.</li>
+            <li>Review usage details and warnings, and import or export tracker settings.</li>
+        </ul>
+        <p>Reads local files without model calls or telemetry. Coverage depends on the source;
+        Claude and Antigravity support is experimental: synthetic tests pass, but validation
+        by contributors with subscriptions is required before verified support can be claimed.
+        Both require source configuration.</p>
+        <p><a href="https://github.com/andrasballai-guidance/ai-usage-trackers#readme">Getting started</a>
+        · <a href="https://github.com/andrasballai-guidance/ai-usage-trackers/issues">Report an issue</a>
+        · <a href="https://github.com/andrasballai-guidance/ai-usage-trackers/blob/master/LICENSE">MIT License</a></p>
     ]]></description>
+    <change-notes><![CDATA[
+        <p>1.0.0: Track local AI usage with configurable status-bar trackers,
+        persistent history, vendor/account selection, quota displays where available,
+        appearance controls and configuration import/export. Claude and Antigravity support
+        is experimental and awaits validation by contributors with subscriptions.</p>
+    ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">
         <statusBarWidgetFactory id="CodexDailyTokens" implementation="local.aiusagetrackers.UsageWidgetFactory"/>
-        <applicationConfigurable id="local.codexusage.daily.settings" displayName="AI Usage Trackers"
+        <applicationConfigurable parentId="tools" id="local.codexusage.daily.settings" displayName="AI Usage Trackers"
                                  instance="local.aiusagetrackers.UsageConfigurable"/>
     </extensions>
 </idea-plugin>

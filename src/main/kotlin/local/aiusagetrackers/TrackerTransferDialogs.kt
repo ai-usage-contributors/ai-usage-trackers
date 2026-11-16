@@ -71,7 +71,9 @@ class ImportTrackersDialog(
     }
     private val summary = JBTextArea(14, 62).apply { isEditable = false; lineWrap = true; wrapStyleWord = true }
     val applyGeneral = JCheckBox("Apply imported vendor labels and carousel settings", false).apply { isVisible = configuration.general != null }
-    private val mappings = configuration.bindings.associateWith { binding -> JComboBox((listOf(AccountChoice("", "Leave unconfigured")) + profiles.filter { it.vendor == binding.vendor }.map { AccountChoice(it.id, it.alias) }).toTypedArray()) }
+    private val mappings = configuration.bindings.associateWith { binding -> JComboBox((listOf(AccountChoice("", "Leave unconfigured")) + profiles.filter { it.vendor == binding.vendor }.map { AccountChoice(it.id, it.alias) }).toTypedArray()).apply {
+        renderer = DefaultListCellRenderer().apply { putClientProperty("html.disable", true) }
+    } }
     fun accountMapping(): Map<String, String> = mappings.mapNotNull { (binding, choice) ->
         (choice.selectedItem as? AccountChoice)?.takeIf { it.id.isNotEmpty() }?.let { binding.reference to it.id }
     }.toMap()
@@ -107,7 +109,7 @@ class ImportTrackersDialog(
         add(strategy, BorderLayout.NORTH); add(JBScrollPane(summary), BorderLayout.CENTER); add(
         JPanel(GridLayout(0, 1)).apply {
             add(applyDisplay); add(applyGeneral)
-            mappings.forEach { (binding, combo) -> add(JLabel("Map ${binding.vendor}: ${binding.alias}").apply {
+            mappings.forEach { (binding, combo) -> add(JLabel("Map ${binding.vendor.presentationLabel}: ${binding.alias}").apply {
                 SettingsHelp.attach(this, combo.toolTipText)
             }); add(combo) }
         },

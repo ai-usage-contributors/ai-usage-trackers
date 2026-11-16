@@ -37,6 +37,7 @@ class UsageService(private val scope: CoroutineScope) {
             try {
                 while (isActive) {
                     val config = settings.providers
+                    synchronized(accounts) { accounts.value = accounts.value.filterKeys { id -> config.profiles.any { it.id == id } } }
                     val collecting = config.collecting().associateBy { it.id }
                     for (id in jobs.keys.toList()) if (id !in collecting) {
                         jobs.remove(id)?.cancelAndJoin(); monitors.remove(id)
@@ -55,16 +56,16 @@ class UsageService(private val scope: CoroutineScope) {
                                 )
                             },
                             { if (id == ProviderProfile.LEGACY_CODEX) settings.analyticsDisplay else profile().analytics },
-                            customCollect = { database, now, cancelled ->
+                            customCollect = { database, now, completedAt, cancelled ->
                                 val p = profile()
                                 database.bindAccount(p)
                                 if (p.vendor == UsageVendor.CODEX) CodexUsageCollector(database).collect(
                                     if (id == ProviderProfile.LEGACY_CODEX) CodexHomeDiscovery().discover(
                                         settings.extraHomes + p.paths().map(Path::toString)
                                     )
-                                    else Discovery(p.paths().toSet(), emptySet()), now, checkCancelled = cancelled
+                                    else Discovery(p.paths().toSet(), emptySet()), now, completionTime = completedAt, checkCancelled = cancelled
                                 )
-                                else ProviderUsageCollector(database).collect(p, now, cancelled)
+                                else ProviderUsageCollector(database).collect(p, now, cancelled, completedAt)
                             }, releaseDriverOnClose = false
                         )
                         monitors[id] = monitor
@@ -143,7 +144,7 @@ internal class UsageMonitor(
     private val definitions: () -> List<TrackerDefinition>,
     private val discover: () -> Discovery,
     private val analyticsOptions: () -> AnalyticsDisplayOptions,
-    private val customCollect: ((UsageDatabase, Instant, () -> Unit) -> Unit)? = null,
+    private val customCollect: ((UsageDatabase, Instant, () -> Instant, () -> Unit) -> Unit)? = null,
     private val releaseDriverOnClose: Boolean = true,
     ioDispatcher: kotlin.coroutines.CoroutineContext = Dispatchers.IO,
 ) {
@@ -189,7 +190,8 @@ internal class UsageMonitor(
                                         try {
                                             if (customCollect != null) customCollect.invoke(
                                                 writer,
-                                                clock.instant()
+                                                clock.instant(),
+                                                clock::instant
                                             ) { context.ensureActive() }
                                             else collector.collect(
                                                 discover(),

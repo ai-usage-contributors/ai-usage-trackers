@@ -12,7 +12,7 @@ import javax.swing.*
 /** Owns only presentation and gestures; never reads usage files or queries storage. */
 class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewport(), AutoCloseable,
     IdeGlassPane.TopComponent {
-    override fun canBePreprocessed(e: MouseEvent): Boolean = !SwingUtilities.isLeftMouseButton(e)
+    override fun canBePreprocessed(e: MouseEvent): Boolean = e !is MouseWheelEvent && !SwingUtilities.isLeftMouseButton(e)
 
     private var logicalWidth = 280
     private var autoExpand = false
@@ -68,7 +68,7 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
     }
 
     private val content = object : JPanel(null), IdeGlassPane.TopComponent {
-        override fun canBePreprocessed(e: MouseEvent): Boolean = !SwingUtilities.isLeftMouseButton(e)
+        override fun canBePreprocessed(e: MouseEvent): Boolean = e !is MouseWheelEvent && !SwingUtilities.isLeftMouseButton(e)
     }.apply { isOpaque = false }
 
     override fun paintChildren(g: Graphics) {

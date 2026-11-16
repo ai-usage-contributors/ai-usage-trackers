@@ -1,0 +1,200 @@
+NATIVE UI ACCEPTANCE PLAN
+Prepared: 2026-11-16 | Planned plugin version: 1.0.0
+Execution status: PARTIAL R1 execution on 2026-11-16, explicitly user-authorized. See native-ui-testing.txt section 7 for observations, defects and remaining scope.
+
+1. PURPOSE AND BASELINE
+
+Complete the 11 scenarios without a full pass in the historical 37-scenario
+matrix, rerun its 26 passes on the current supported IDEA 2026.3 candidate, and
+cover eight newer behavior areas. Expected results and historical observations
+are recorded in docs/native-ui-testing.txt. No native tests were run when these
+documents were prepared.
+
+Historical baseline H1: plugin 1.0.0, Windows 11, IDEA 2026.2.3 / IU-262.10968.63,
+evidence dated 2026-11-13. Of 37 scenarios, 26 passed, four were limited, one
+inconclusive and six untested. The 11 not fully passed are:
+W04, W10, S07, S08, T06, A01, A02, Q01, Q02, C08, C09.
+Thus the remaining fraction of that historical matrix is 11/37 = 29.7%.
+
+The next run R1 has 45 top-level scenarios: those 37 plus N01-N08. All 45 are
+pending on the current candidate. A shared version number does not make the
+older and current packages identical. Do not report 26/45 as current passes.
+These counts measure defined scenarios equally, not every possible UI behavior.
+
+2. AUTHORIZATION, SAFETY AND RUN IDENTITY
+
+Native/live-plugin/UI execution requires an explicit user request under AGENTS.md.
+This task creates the plan and record only. Do not start runIde or send UI input
+until execution is requested.
+
+Prerequisites:
+- Unlocked Windows workstation, installed supported IDEA 2026.3, JDK 25 and the
+  repository's Gradle wrapper/dependencies.
+- Current candidate ZIP/source, existing automated validation and inspections.
+  Record exact plugin version, ZIP SHA256, source revision or local snapshot
+  manifest, IDE version/build, OS, date, theme, IDE zoom, OS display scaling,
+  window dimensions, input method and screen reader/version where applicable.
+- An isolated sandbox and disposable project. Never select production sources
+  or reuse production usage databases. Use separate synthetic Codex, Claude and
+  Antigravity accounts with deterministic known totals.
+- Snapshot the sandbox settings before testing; keep snapshots, fixture copies,
+  captures and logs under agent-logs. Do not commit these artifacts or secrets.
+- Verify the exact sandbox title, process ID and product build before EACH input
+  sequence. If focus/routing is uncertain, stop and mark the affected result
+  INCONCLUSIVE. Stop on physical Escape, locking or loss of the selected surface.
+  Do not infer successful input from issuing a command or pressing a key.
+- Keep one sandbox instance. Record its log start offset/time for each session.
+  Restore sandbox appearance/settings and close it at the end; verify restoration
+  and note any failures. Do not assert production settings were untouched unless
+  the evidence establishes that.
+
+Preparation commands from the repository root (once execution is authorized):
+  Get-FileHash -Algorithm SHA256 -LiteralPath build/distributions/ai-usage-trackers-1.0.0.zip
+  python tools/synthetic-usage/generate.py
+  .\gradlew.bat runIde '--args=C:/source/ai-usage-trackers/agent-logs/ui-test-project'
+
+Create the disposable project directory first if absent. The generator prints NEW
+fixture folders; record the selected config, dataset identity and expected counts.
+Confirm that the running sandbox contains the candidate identified by the recorded
+hash/source snapshot and actually uses IDEA 2026.3. Build success alone is not a
+native pass. Do not launch a model merely to create test data.
+
+3. ORDERED EXECUTION
+
+Batch A - Routing, geometry and conditional settings
+IDs: S07, S08, A02; rerun S01-S06.
+- First confirm sandbox routing and baseline near-full-screen geometry.
+- Traverse all six tabs, all category/help expansions and nested controls.
+- Cover light/dark themes, normal/enlarged IDE zoom and OS display scaling;
+  cover both near-full-screen and the smallest usable Settings dialog.
+- Cover preview pinned/unpinned; calendar/elapsed/provider-week controls;
+  supported/unverified quota schemes; 12/24-hour formats; coloring/font switches;
+  every ribbon motion mode and its conditional controls.
+- Record a per-tab/environment matrix. Recheck clipping with known geometry;
+  classify a reproduced defect separately from historical routing uncertainty.
+Expected: readable, reachable controls; wrapping and scrolling; no overlap,
+inaccessible fields or unintended draft resets. Preserve caret/selection on edits.
+
+Batch B - Accessibility
+ID: A01.
+- Use keyboard-only traversal through every tab, category, list, nested editor,
+  picker, import/export dialog, preview and popup. Exercise Tab/Shift+Tab,
+  arrows, Space, Enter and Escape where supported.
+- Hover each setting label/control/nested editable input. Independently use a
+  screen reader to check accessible names, purpose/effect descriptions and focus.
+- Record the actual screen reader and input method. A screenshot or CUA tree is
+  not proof of screen-reader output.
+Expected: visible focus, operable controls, meaningful matching descriptions,
+reachable errors and focus recovery after hiding/removing a focused control.
+If no suitable assistive technology is available, keep that variant BLOCKED.
+
+Batch C - Configuration transfer and persistence
+ID: T06; rerun T01-T05 and N06.
+- Cross product: selected/all trackers; appearance off/on; vendor preferences
+  off/on; merge/replace; matching/different local account/unconfigured mapping.
+- Include duplicate names and tracker-limit boundaries.
+- Reject malformed, duplicate-field, unsupported-format and oversized files.
+- Cancel at file choice, export options/save choice, import preview and outer
+  Settings; compare saved sandbox configuration before/after. Test Apply/OK
+  separately, then reopen Settings and restart.
+Expected: accurate previews/order/mappings; optional settings change only when
+selected; safe rejection; cancellation does not persist draft changes.
+Do not reinterpret historical expectations as support for removed schema formats.
+
+Batch D - Ribbon and vendor interactions
+IDs: C08, C09; rerun C01-C07 and N08.
+- Use enough unequal-width fixed/ribbon entries to force overflow.
+- Cover Restart, Bounce, Continuous, Horizontal step and Vertical step;
+  both vertical directions; zero/nonzero speed/interval; auto-width off/on.
+- Exercise inner wheel/drag, outer label wheel/drag, hover/focus keyboard cycling,
+  chooser keyboard selection, rapid reversals and transitions while popups open.
+- Inspect hit targets during transitions and after values/theme/font/width change.
+- Record animation observations using sanitized timestamped recordings if available;
+  compare intended timings with current TECHNICAL.md. Do not invent a timing pass
+  from a still image. If precise timing cannot be established, record that limit.
+Expected: independent inner/outer navigation, correct members, stable popup
+account context, pause/resume, no accidental menu click after dragging, and no
+new plugin-related log errors. This is acceptance, not a performance benchmark.
+
+Batch E - Controlled quota, warnings and integrity
+IDs: Q01, Q02; rerun W05-W09 and N03/N05.
+- Use isolated fixtures for available/stale/expired/reset-only/missing pinned pool
+  and disabled/re-enabled states. Keep request identity and account attribution
+  explicit. Use quota reset times relative to the recorded test clock and wait
+  for actual boundaries; do not change the production OS clock.
+- Trigger known malformed/future/conflicting synthetic records for warnings and
+  integrity. Exercise acknowledgement, Update View, tab switches and retries.
+- Use a documented reversible sandbox-only failure setup for acknowledgement
+  persistence (for example controlled database contention), with a restoration
+  procedure. If safe failure injection is unavailable, mark it BLOCKED.
+Expected: accurate state explanations; no fallback from a missing pinned pool;
+correct rollover; only captured findings acknowledged; failure allows retry;
+older callbacks do not clear newer findings. No credentials are required.
+
+Batch F - Lifecycle and current regression scope
+IDs: W04, W10 and N01-N08; rerun W01-W03.
+- Open two disposable projects, refresh and switch vendors, open/close popups,
+  repeatedly close/reopen projects, then restart the sandbox.
+- Exercise new account management, experimental labelling, literal imported text,
+  large provider files, completion timestamps and current-format persistence as
+  specified in the testing record.
+Expected: one widget per project; shared account collection without duplicated
+usage; disposed popups/timers no longer respond; restored settings and retained
+history; no new plugin-attributed exceptions in the bounded fresh log interval.
+
+4. RECORDING AND EXIT CRITERIA
+
+Execute all 45 top-level scenarios on the identified candidate and supported IDE
+target. Split broad scenarios into identified variants and record each outcome.
+A parent passes only when all its required variants pass; LIMITED/INCONCLUSIVE/
+BLOCKED/NOT RUN never count as full passes. Record defects and retest the affected
+scope after fixes. Preserve the original failed/limited execution rather than
+overwriting it. Current-run completion = fully passed applicable parents /
+applicable planned parents; report blocked, excluded and unexecuted counts too.
+An exclusion needs a specific reason and explicit owner agreement; preserve it
+in the scope history rather than quietly reducing the denominator.
+
+Complete native release acceptance only when the agreed release matrix has
+evidence-backed passes and no unresolved release-blocking defects. If execution,
+screen-reader checks or safe fault injection are unavailable, report the exact
+gap and follow-up; do not label the release fully native-validated.
+
+Historical UI runs have no independently archived screenshot/video set and no
+known exact artifact hash. Do not manufacture these fields retrospectively.
+Attach future redacted evidence and bounded log intervals to run records.
+
+5. EXPERIMENTAL VENDORS AND FUTURE RELEASES
+
+Synthetic Claude/Antigravity UI testing validates presentation of known local
+facts only. Keep both experimental. Real-subscription contributor acceptance in
+TECHNICAL.md section 5 is separate; record client/interface/subscription context,
+actual observations and sanitized evidence without credentials before changing
+support claims. The owner is not expected to obtain subscriptions for this UI plan.
+
+For each release, refresh candidate identity and supported IDE targets, rerun the
+baseline, add stable scenarios for every new/changed user-visible feature and fix,
+and update both documents. Extend settings/accessibility/environment matrices
+when controls or integrations change. Archive previous runs, even for another
+candidate still numbered 1.0.0. Automated results remain separate from native ones.
+Performance measurement, other operating systems, actual midnight/wake behavior
+and unlisted provider interfaces are not certified by completing these 45 cases;
+add explicitly scoped scenarios before making those additional claims.
+
+
+
+R1 screen-reader prerequisite update (2026-11-16): A01 independent screen-reader
+variant is BLOCKED by confirmed absence of installed/configured assistive software.
+Use NVDA with IDEA Support screen readers and NVDA Tools > Speech Viewer;
+see the official links and exact follow-up in native-ui-testing.txt R1 continuation.
+This records setup research only and authorizes no installation or execution.
+
+R1 segment ended 2026-11-16 14:11 +01:00: sandbox closed cleanly; partial results and unresolved R1-D01/R1-D02 are in the acceptance record. Full acceptance remains pending.
+
+USER TESTING TIER (2026-11-16)
+USER-PASS is owner-reported successful installed-plugin use, distinct from
+agent-observed PASS and automated checks. U1 in native-ui-testing.txt records
+all43 scenarios other than A02/N08 as USER-PASS at the owner's explicit request.
+Retain agent outcomes and instrumentation gaps separately; known failures need
+fix-retest evidence, and user reports do not automatically transfer to rebuilds.
+
+R2 targeted fix retests passed on 2026-11-16: R1-D01 both theme directions, R1-D02 hover shortcut isolation and normal IDE shortcut control. See native-ui-testing.txt section9 for artifact identity. U1 remains the separate USER-PASS tier for the other43 scenarios.

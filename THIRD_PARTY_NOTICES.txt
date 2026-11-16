@@ -29,3 +29,10 @@ The packaged driver includes its SQLite native libraries and original license fi
 Complete supplied licenses are also reproduced in:
   licenses/sqlite-jdbc-LICENSE.txt
   licenses/sqlite-jdbc-LICENSE.zentus.txt
+
+Plugin logo: adapted from Lucide chart-no-axes-combined
+https://lucide.dev/icons/chart-no-axes-combined
+https://lucide.dev/license
+The supplied drawing is packaged with theme-specific stroke colors and padding.
+ISC license: Copyright (c) 2026 Lucide Icons and Contributors.
+Complete license: licenses/lucide-ISC.txt

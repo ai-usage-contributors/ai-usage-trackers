@@ -3,11 +3,22 @@
 Track local AI token usage in the IntelliJ IDEA status bar. Start with the
 **Today** and **This week** trackers, or create trackers for your own time periods.
 
+**Claude and Antigravity support is experimental.** Contributors with subscriptions
+are needed to test it with real usage before verified support can be claimed.
+
 For technical details, see [TECHNICAL.md](TECHNICAL.md).
 
 For building and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Screenshots
+
+![Widget with the quota tooltip open](docs/screenshots/widget-quota-tooltip.png)
+
+![Widget with inline usage and quota values](docs/screenshots/widget-inline.png)
+
 ## Install
+
+Requires IntelliJ IDEA **2026.3**.
 
 1. Open **Settings > Plugins** in IntelliJ IDEA.
 2. Open the gear menu and choose **Install Plugin from Disk…**.
@@ -18,14 +29,14 @@ for more help.
 
 ## Get started
 
-Open **Settings > AI Usage Trackers**, or click the vendor name in the status
+Open **Settings > Tools > AI Usage Trackers**, or click the vendor name in the status
 bar and choose **Settings**.
 
 Codex tracking is enabled by default and searches for local Codex logs
 automatically. In **General**, use **Track usage** to turn collection on or off
 and **Widget prefix** to change the name shown before the values.
 
-For Claude, Antigravity, additional accounts, or custom folders, open
+For experimental Claude or Antigravity support, additional accounts, or custom folders, open
 **Advanced > Accounts and usage sources**:
 
 1. Choose the vendor and account, or select **Add account**.
@@ -37,6 +48,10 @@ For Claude, Antigravity, additional accounts, or custom folders, open
 Use **Setup instructions…** for vendor-specific steps, including how to use
 **Export capture helper and instructions…** for Claude and Antigravity.
 
+Use **Remove account** to remove an unused account after reassigning or removing
+its trackers. Imported history is retained. Keep at least one account per vendor;
+the original Codex account cannot be removed.
+
 Hover over a setting for a short explanation. Click a category's help icon to
 show more help beside its settings, or click its title to collapse or expand it.
 
@@ -45,6 +60,13 @@ show more help beside its settings, or click its title to collapse or expand it.
 Use **Displayed vendor** in General, or the widget's **Agents** menu, to switch
 between configured, enabled vendors. Other enabled vendors keep collecting usage.
 Turn on **Multi-vendor carousel** to rotate between selected vendors automatically.
+While hovering the widget, use **Alt+Left/Right** to cycle carousel agents. Scroll
+over the agent name or drag it (vertically for Vertical step, horizontally for
+other modes) to change agents; dragging applies when you release the button.
+Scroll or drag over the agent's ribbon to move through that agent's entries.
+
+The widget follows the IDE's light or dark theme. While hovering the widget,
+its agent shortcuts leave the focused editor or tool window unchanged.
 
 Each tracker counts usage for its selected account. Choose that account in the
 tracker editor. The **Quota account** selector chooses which account's quota
@@ -107,10 +129,20 @@ or replace them. Review account mappings, then select **Apply** or **OK** to sav
 Usage history and source folders are excluded from these files.
 Only current-format configuration files can be imported.
 
+## Try synthetic usage
+
+For demonstrations or screenshots, use the [synthetic data generator](tools/synthetic-usage/README.txt).
+Edit its JSON config to choose token counts, request ages and quota values for
+Codex, Claude and Antigravity, then run `python tools/synthetic-usage/generate.py`.
+It requires Python 3.10+ with no extra packages. Use separate demo accounts;
+regenerating files does not erase previously imported usage.
 ## Credits
 
 Licensed under the [MIT License](LICENSE).
 
-Licensed under the [MIT License](LICENSE).
-
 See [Third-party notices](THIRD_PARTY_NOTICES.txt) for acknowledgements and licenses.
+
+## Support
+
+Report problems or request features in the
+[GitHub issue tracker](https://github.com/andrasballai-guidance/ai-usage-trackers/issues).
