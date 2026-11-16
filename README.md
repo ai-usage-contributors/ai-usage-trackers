@@ -38,8 +38,19 @@ for more help.
 Open **Settings > Tools > AI Usage Trackers**, or click the vendor name in the status
 bar and choose **Settings**.
 
-Codex tracking is enabled by default and searches for local Codex logs
-automatically. In **General**, use **Track usage** to turn collection on or off
+On first load, a popup explains local data processing and links the **Privacy
+Policy**. Choose **Agree and Enable** to begin or **Not Now** to leave processing
+disabled. Closing the popup also leaves processing disabled. Existing installations
+without a saved agreement see the popup too. Once agreed, it does not reappear on
+restart. If declined, it is offered again on the next IDE session.
+
+You can also grant or withdraw agreement in **General** using **I agree to local
+usage processing**, then **Apply** or **OK**. Withdrawing stops processing and
+retains saved history. Agreement is specific to this IDE installation and excluded
+from settings sync and configuration exports.
+
+Codex is selected for tracking by default and searches for local Codex logs
+automatically after agreement. In **General**, use **Track usage** to turn collection on or off
 and **Widget prefix** to change the name shown before the values.
 
 For experimental Claude or Antigravity support, additional accounts, or custom folders, open

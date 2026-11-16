@@ -284,6 +284,24 @@ The plugin version remains 1.0.0; no collection/runtime behavior changes.
 
 ### 6.1 Location and ownership
 
+`UsageConsent` stores agreement revision 1 in `aiUsageTrackersConsent.xml` with
+`RoamingType.DISABLED`. Fresh installations and existing settings without this
+revision require explicit agreement. Widget installation requests one modal popup
+per application session when agreement is absent; it offers Agree and Enable,
+Not Now, and an explicit browser link to the repository Privacy Policy. Closing or
+declining does not enable processing. Accepted agreement suppresses future prompts.
+Unit-test mode does not show the dialog. General settings also support granting
+or withdrawing agreement on Apply/OK; Cancel and Reset discard draft changes.
+Agreement is separate from `UsageSettings` and portable configuration.
+
+Without agreement the service starts no account monitors and returns an
+`agreement required` presentation without cached usage. Preview database reads
+and warning acknowledgements are gated too. Revocation hides readings immediately;
+the 250 ms service loop cancels monitors and collection cancellation checkpoints
+also check agreement. In-flight work stops cooperatively, retaining stored history.
+Reaccepting starts eligible account monitors. Privacy links open a browser only
+on explicit activation and do not grant agreement.
+
 The [Privacy Policy](PRIVACY.md) describes local processing, retained data,
 user-controlled exports, and deletion. The plugin and capture helper do not
 transmit usage data to ai-usage-contributors or third-party servers.
@@ -482,6 +500,9 @@ colors without clearing saved choices. Legacy threshold styles remain readable,
 but current shared presentation discards their colors while retaining hidden labels.
 
 ## 9. Settings composition
+
+General begins with the local processing agreement and Privacy Policy link. Both
+controls and their labels provide hover help and accessible descriptions.
 
 ### 9.1 Shared layout and draft behavior
 
@@ -743,6 +764,13 @@ partial destination.
 
 ## 12. Limitations and validation
 
+The local-processing agreement candidate has 260 passing automated tests, clean
+changed-file IntelliJ inspections, successful packaging/configuration checks and
+IDEA 2026.3 compatibility verification. Its signed ZIP passed signature verification.
+Native first-load popup and agreement lifecycle scenario N09 remains pending in
+[the acceptance record](docs/native-ui-testing.txt); earlier USER-PASS results do
+not establish execution of this new flow.
+
 ### 12.1 Coverage and interpretation
 
 - Local sources establish local recorded consumption, not authenticated,
@@ -917,7 +945,7 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 | Plugin version | Principal change |
 | --- | --- |
 | 1.0.1 | Expand Marketplace metadata with feature descriptions and public project, documentation, support and license links. |
-| 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, and IDE-first hover shortcut consumption. |
+| 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, IDE-first hover shortcut consumption, and explicit local processing agreement with a first-load popup and privacy link. |
 | 0.18.8 | Remove support for older portable configuration and database schema versions. |
 | 0.18.7 | Simplify display decoding, session import and widget rendering control flow. |
 | 0.18.6 | Simplify bounded line termination control flow; cover EOF, newline and line-size boundaries. |

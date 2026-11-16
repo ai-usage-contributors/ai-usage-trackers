@@ -40,6 +40,7 @@ class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposa
     override fun ID() = "CodexDailyTokens"
     override fun getComponent(): JComponent = root
     override fun install(statusBar: StatusBar) {
+        service<UsageConsent>().requestAgreement(project)
         update(); timer = Timer(250) { if (!disposed) update() }.also { it.start() }
     }
 

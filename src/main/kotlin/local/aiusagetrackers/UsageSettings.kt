@@ -90,7 +90,7 @@ class UsageConfigurable : Configurable, Configurable.NoScroll {
     override fun isModified(): Boolean {
         val panel = editor ?: return false
         val settings = service<UsageSettings>()
-        return panel.providers() != settings.providers || panel.analyticsDisplay() != settings.analyticsDisplay || panel.showLastRequest() != settings.showLastRequest || panel.trackerLimit() != settings.trackerLimit || panel.homes() != settings.extraHomes || panel.trackers() != settings.trackers || panel.display() != settings.display
+        return panel.usageAgreement() != service<UsageConsent>().accepted || panel.providers() != settings.providers || panel.analyticsDisplay() != settings.analyticsDisplay || panel.showLastRequest() != settings.showLastRequest || panel.trackerLimit() != settings.trackerLimit || panel.homes() != settings.extraHomes || panel.trackers() != settings.trackers || panel.display() != settings.display
     }
 
     override fun apply() {
@@ -102,6 +102,7 @@ class UsageConfigurable : Configurable, Configurable.NoScroll {
             throw ConfigurationException(failure.message ?: "Invalid tracker")
         }
         service<UsageSettings>().update(panel.homes(), trackers, panel.display(), panel.trackerLimit(), panel.showLastRequest(), panel.analyticsDisplay(), panel.providers())
+        service<UsageConsent>().setAccepted(panel.usageAgreement())
         service<UsageService>().refresh()
     }
 
@@ -109,6 +110,7 @@ class UsageConfigurable : Configurable, Configurable.NoScroll {
         val settings = service<UsageSettings>()
         editor?.reset(settings.extraHomes, settings.trackers, settings.display, settings.trackerLimit, settings.showLastRequest, settings.analyticsDisplay)
         editor?.resetProviders(settings.providers)
+        editor?.resetUsageAgreement(service<UsageConsent>().accepted)
     }
 
     override fun disposeUIResources() {

@@ -22,9 +22,12 @@ class UsageService(private val scope: CoroutineScope) {
     internal var ioDispatcher: kotlin.coroutines.CoroutineContext = Dispatchers.IO
     private val databasePath get() = PathManager.getConfigDir().resolve("codexUsage/usage.sqlite")
     private val settings get() = service<UsageSettings>()
+    private val consent get() = service<UsageConsent>()
     private val monitors = java.util.concurrent.ConcurrentHashMap<String, UsageMonitor>()
     private val accounts = MutableStateFlow<Map<String, UsageSnapshot>>(emptyMap())
-    fun snapshot(accountId: String): UsageSnapshot = accounts.value[accountId] ?: UsageSnapshot()
+    fun snapshot(accountId: String): UsageSnapshot = if (!consent.accepted)
+        UsageSnapshot(agreementRequired = true, loading = false, issues = setOf(UsageConsent.REQUIRED_MESSAGE))
+        else accounts.value[accountId] ?: UsageSnapshot()
     fun profilePath(profile: ProviderProfile): Path {
         require(profile.id.matches(Regex("[A-Za-z0-9_-]{1,80}"))) { "Invalid account reference" }
         return if (profile.id == ProviderProfile.LEGACY_CODEX && profile.vendor == UsageVendor.CODEX) databasePath
@@ -38,7 +41,8 @@ class UsageService(private val scope: CoroutineScope) {
                 while (isActive) {
                     val config = settings.providers
                     synchronized(accounts) { accounts.value = accounts.value.filterKeys { id -> config.profiles.any { it.id == id } } }
-                    val collecting = config.collecting().associateBy { it.id }
+                    val collecting = if (consent.accepted) config.collecting().associateBy { it.id } else emptyMap()
+                    if (!consent.accepted) accounts.value = emptyMap()
                     for (id in jobs.keys.toList()) if (id !in collecting) {
                         jobs.remove(id)?.cancelAndJoin(); monitors.remove(id)
                     }
@@ -66,7 +70,7 @@ class UsageService(private val scope: CoroutineScope) {
                                     else Discovery(p.paths().toSet(), emptySet()), now, completionTime = completedAt, checkCancelled = cancelled
                                 )
                                 else ProviderUsageCollector(database).collect(p, now, cancelled, completedAt)
-                            }, releaseDriverOnClose = false
+                            }, releaseDriverOnClose = false, allowed = { consent.accepted }
                         )
                         monitors[id] = monitor
                         jobs[id] = job
@@ -92,6 +96,7 @@ class UsageService(private val scope: CoroutineScope) {
         val modality = ModalityState.current()
         scope.launch(ioDispatcher) {
             val saved = try {
+                check(consent.accepted) { UsageConsent.REQUIRED_MESSAGE }
                 val profile = settings.providers.profiles.firstOrNull { it.id == accountId }
                     ?: error("Account no longer configured")
                 UsageDatabase(profilePath(profile)).use { it.acknowledgeIssues(page, issues) }
@@ -109,6 +114,7 @@ class UsageService(private val scope: CoroutineScope) {
         val modality = ModalityState.current()
         return scope.launch(ioDispatcher) {
             val text = try {
+                check(consent.accepted) { UsageConsent.REQUIRED_MESSAGE }
                 UsagePeriodResolver().validate(definition)
                 val context = currentCoroutineContext()
                 val profile = settings.providers.profiles.firstOrNull { it.id == definition.accountId }
@@ -147,6 +153,7 @@ internal class UsageMonitor(
     private val customCollect: ((UsageDatabase, Instant, () -> Instant, () -> Unit) -> Unit)? = null,
     private val releaseDriverOnClose: Boolean = true,
     ioDispatcher: kotlin.coroutines.CoroutineContext = Dispatchers.IO,
+    private val allowed: () -> Boolean = { true },
 ) {
     private class CompletedAnalytics {
         var key: Pair<Instant?, Long>? = null
@@ -169,6 +176,7 @@ internal class UsageMonitor(
             try {
                 while (isActive) {
                     try {
+                        if (!allowed()) { delay(250.milliseconds); continue }
                         val location = path()
                         UsageDatabase(location).use { writer ->
                             coroutineScope {
@@ -185,6 +193,7 @@ internal class UsageMonitor(
                                     requests.trySend(Unit)
                                     while (isActive) {
                                         requests.receive()
+                                        checkAgreement()
                                         importing.value = true
                                         val context = currentCoroutineContext()
                                         try {
@@ -192,12 +201,12 @@ internal class UsageMonitor(
                                                 writer,
                                                 clock.instant(),
                                                 clock::instant
-                                            ) { context.ensureActive() }
+                                            ) { context.ensureActive(); checkAgreement() }
                                             else collector.collect(
                                                 discover(),
                                                 clock.instant(),
                                                 completionTime = clock::instant
-                                            ) { context.ensureActive() }
+                                            ) { context.ensureActive(); checkAgreement() }
                                             completedScans.value++
                                             scanIssues.value = emptySet()
                                         } catch (cancelled: CancellationException) {
@@ -213,6 +222,7 @@ internal class UsageMonitor(
                                 UsageDatabase(location, true).use { reader ->
                                     val completed = CompletedAnalytics()
                                     while (isActive) {
+                                        checkAgreement()
                                         val context = currentCoroutineContext()
                                         val now = clock.instant()
                                         val selectedZone = zone()
@@ -311,4 +321,6 @@ internal class UsageMonitor(
     fun refresh() {
         requests.trySend(Unit)
     }
+
+    private fun checkAgreement() { check(allowed()) { UsageConsent.REQUIRED_MESSAGE } }
 }

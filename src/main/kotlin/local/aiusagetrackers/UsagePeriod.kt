@@ -116,6 +116,7 @@ data class UsageSnapshot(
     val budgetEstimates: Map<String, QuotaBudgetEstimate> = emptyMap(),
     val acknowledgedWarnings: Set<String> = emptySet(),
     val acknowledgedIntegrity: Set<String> = emptySet(),
+    val agreementRequired: Boolean = false,
     val operationalIssues: Set<String> = issues,
     val integrityIssues: Set<String> = emptySet(),
 )

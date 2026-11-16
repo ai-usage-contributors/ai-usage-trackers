@@ -1,7 +1,7 @@
-<idea-plugin url="https://github.com/andrasballai-guidance/ai-usage-trackers">
+<idea-plugin url="https://github.com/ai-usage-contributors/ai-usage-trackers">
     <id>local.codexusage.daily</id>
     <name>AI Usage Trackers</name>
-    <vendor url="https://github.com/andrasballai-guidance/ai-usage-trackers" email="ai.usage.contributors@gmail.com">AI Usage Trackers contributors</vendor>
+    <vendor url="https://github.com/ai-usage-contributors/ai-usage-trackers" email="ai.usage.contributors@gmail.com">AI Usage Trackers contributors</vendor>
     <description><![CDATA[
         <p>Track local AI token usage in the IntelliJ IDEA status bar with persistent history
         and configurable trackers. Start with Today and This week, or choose calendar periods,
@@ -17,9 +17,10 @@
         Claude and Antigravity support is experimental: synthetic tests pass, but validation
         by contributors with subscriptions is required before verified support can be claimed.
         Both require source configuration.</p>
-        <p><a href="https://github.com/andrasballai-guidance/ai-usage-trackers#readme">Getting started</a>
-        · <a href="https://github.com/andrasballai-guidance/ai-usage-trackers/issues">Report an issue</a>
-        · <a href="https://github.com/andrasballai-guidance/ai-usage-trackers/blob/master/LICENSE">MIT License</a></p>
+        <p><a href="https://github.com/ai-usage-contributors/ai-usage-trackers#readme">Getting started</a>
+        · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/issues">Report an issue</a>
+        · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/blob/master/LICENSE">MIT License</a>
+        · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/blob/master/PRIVACY.md">Privacy Policy</a></p>
     ]]></description>
     <change-notes><![CDATA[
         <p>1.0.0: Track local AI usage with configurable status-bar trackers,

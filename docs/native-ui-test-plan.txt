@@ -1,4 +1,12 @@
 NATIVE UI ACCEPTANCE PLAN
+New candidate scenario N09: first-load agreement and public metadata links.
+The candidate inventory is now 46 scenarios; prior 45-scenario results remain historical.
+Test fresh/upgraded profiles, popup policy link without agreement, Not Now and window
+close, Agree and Enable, restart persistence, one prompt across project windows,
+General Apply/OK/Cancel/Reset, withdrawal/reacceptance, all vendors, preview and
+acknowledgement gating, history retention, export/sync exclusion, keyboard and
+accessible descriptions/tooltips. Verify repository/privacy links. Status PENDING;
+record candidate hash and environment before authorized native execution.
 Prepared: 2026-11-16 | Planned plugin version: 1.0.0
 Execution status: PARTIAL R1 execution on 2026-11-16, explicitly user-authorized. See native-ui-testing.txt section 7 for observations, defects and remaining scope.
 

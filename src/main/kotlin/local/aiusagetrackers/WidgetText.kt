@@ -27,6 +27,9 @@ object WidgetText {
         showLastRequest: Boolean = false,
         options: AnalyticsDisplayOptions = AnalyticsDisplayOptions()
     ): List<StatusValue> = buildList {
+        if (snapshot.agreementRequired) {
+            add(StatusValue("state", "", "agreement required", state = StatusValueState.UNAVAILABLE)); return@buildList
+        }
         if (options.showReportedPools) addReportedPools(snapshot, options)
         if (snapshot.loading) {
             add(StatusValue("state", "", "loading", state = StatusValueState.LOADING)); return@buildList

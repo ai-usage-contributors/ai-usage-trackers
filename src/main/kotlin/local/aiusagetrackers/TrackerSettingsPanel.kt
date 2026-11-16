@@ -57,6 +57,9 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private val widgetPreview = TrackerWidgetPreview(::reorderPreview)
     private val trackerLimit = JSpinner(SpinnerNumberModel(5, 1, 32, 1))
     private val lastRequest = JCheckBox("Show last request", false)
+    private val consentEditor = UsageConsentPanel()
+    fun usageAgreement(): Boolean = consentEditor.accepted
+    fun resetUsageAgreement(value: Boolean) { consentEditor.accepted = value }
     private var quotaAccountId = ProviderProfile.LEGACY_CODEX
     private val analyticsEditor = AnalyticsSettingsPanel { service<UsageService>().snapshot(quotaAccountId) }
     private val generalEditor = ProviderSettingsPanel(::providersChanged, ::addDefaultTrackers) { id -> trackers().any { it.accountId == id } }
@@ -487,7 +490,10 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             add(analyticsEditor, BorderLayout.CENTER)
         }
         val tabs = settingsTabs(
-            "General" to generalEditor,
+            "General" to JPanel(BorderLayout()).apply {
+                add(consentEditor, BorderLayout.NORTH)
+                add(generalEditor, BorderLayout.CENTER)
+            },
             "Trackers" to trackersPanel,
             "Quota" to quotaPanel,
             "Appearance" to appearance,

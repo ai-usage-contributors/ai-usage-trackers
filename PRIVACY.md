@@ -18,6 +18,18 @@ or contact AI providers to obtain your usage or quota information.
 
 ## Data used by the plugin
 
+Before processing begins, a first-load popup explains local processing and links
+this policy. Choose **Agree and Enable** to allow it. **Not Now** or closing the
+popup leaves processing disabled. Existing installations without a saved agreement
+also require this step. A saved agreement prevents the popup on subsequent restarts;
+without agreement it is offered once per IDE session.
+
+You can grant or withdraw agreement in **Settings > Tools > AI Usage Trackers >
+General** by changing **I agree to local usage processing** and clicking **Apply**
+or **OK**. Withdrawal stops processing without erasing stored history.
+The agreement revision is saved locally in `aiUsageTrackersConsent.xml`, with
+settings sync disabled for this record. It is excluded from configuration exports.
+
 Depending on the available source data and enabled features, the plugin reads
 and stores:
 
@@ -55,7 +67,8 @@ expire stored history.
 To remove the stored history, close the IDE and delete the plugin's `codexUsage`
 folder, including its database sidecar files. To remove saved settings as well,
 delete `codexDailyTokens.xml` from the IDE configuration's `options` folder while
-the IDE is closed. Source logs, capture files, and exported files are separate
+the IDE is closed. Delete `aiUsageTrackersConsent.xml` there as well to remove
+the saved agreement. Source logs, capture files, and exported files are separate
 and must be removed separately if you want to delete them. Re-enabling collection
 can import data again from source files that remain available.
 
