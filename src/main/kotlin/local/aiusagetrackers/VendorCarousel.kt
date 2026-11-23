@@ -2,6 +2,7 @@ package local.aiusagetrackers
 
 import com.intellij.ide.IdeEventQueue
 import java.awt.BorderLayout
+import java.awt.Container
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.KeyboardFocusManager
@@ -56,6 +57,7 @@ class VendorCarouselMotion(private val nanoTime: () -> Long = System::nanoTime) 
 
 /** A whole-view carousel. Geometry is supplied by vendor panels, with no outer width setting. */
 class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPanel(BorderLayout()), AutoCloseable {
+    internal var pointerInside: (Container) -> Boolean? = { WidgetPointer.inside(it) }
     private val motion = VendorCarouselMotion(nanoTime)
     private val views = linkedMapOf<UsageVendor, JComponent>()
     private var options = VendorDisplayState()
@@ -74,7 +76,7 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
         val manager = KeyboardFocusManager.getCurrentKeyboardFocusManager()
         isShowing && SwingUtilities.getWindowAncestor(this) === manager.focusedWindow &&
             !paused() && MenuSelectionManager.defaultManager().selectedPath.isEmpty() &&
-            (getMousePosition(true) != null || manager.focusOwner?.let { SwingUtilities.isDescendingFrom(it, this) } == true)
+            navigationEligible(manager.focusOwner?.let { SwingUtilities.isDescendingFrom(it, this) } == true)
     }, ::navigate)
     private val navigationDispatcher = object : IdeEventQueue.NonLockedEventDispatcher {
         override fun dispatch(e: java.awt.AWTEvent): Boolean =
@@ -87,6 +89,8 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
         toolTipText = "Alt+Left/Right changes agents while hovering or focusing the widget. Scroll or drag the agent label to change agents; ribbon gestures change its entries."
     }
 
+    internal fun navigationEligible(focused: Boolean): Boolean = focused || pointerInside(this) == true
+
     fun navigate(step: Int) {
         tick(step)
     }
@@ -96,9 +100,9 @@ class VendorCarousel(private val nanoTime: () -> Long = System::nanoTime) : JPan
         tick()
     }
 
-    private fun tick(manual: Int = 0) {
+    internal fun tick(manual: Int = 0) {
         val focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
-        val interacting = paused() || (isShowing && getMousePosition(true) != null) || focus?.let {
+        val interacting = paused() || (pointerInside(this) != false) || focus?.let {
             SwingUtilities.isDescendingFrom(
                 it,
                 this

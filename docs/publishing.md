@@ -36,6 +36,11 @@ Hosted execution must be validated after upload; IntelliJ inspections remain sep
 
 ## Marketplace preparation
 
+Current 1.0.1 candidate: the owner reports local testing verified the fix.
+Controlled monitor variants and the full native replay remain unexecuted.
+See section 11 of [the testing record](native-ui-testing.txt).
+The following owner acceptance applies to the historical 1.0.0 candidate.
+
 Release validation status (2026-11-16): the owner reports local installed-plugin
 testing, requests USER-TESTED status and considers the plugin ready for submission.
 The agreement flow is recorded at that tier in native-ui-testing.txt section10.
@@ -96,7 +101,16 @@ lines and repository files. With credentials available, run:
 .\gradlew.bat signPlugin verifyPluginSignature
 ```
 
-The signed output is `build/distributions/ai-usage-trackers-1.0.0-signed.zip`;
+The 1.0.1 candidate was signed and verified with ZIP Signer 0.1.45 directly,
+preserving the tested unsigned archive. Its hashes and signature evidence are in
+[the testing record](native-ui-testing.txt#11-candidate-101---display-change-recovery-2026-11-23).
+It uses a replacement RSA-4096 signing identity, stored outside the repository as
+`ai-usage-trackers-signing-2026-11-23.p12`; the original keystore is preserved.
+The replacement uses the password from the Windows Generic Credential whose
+target is `Codex:Plugin signing`. Keep this keystore and credential for future
+signing. The certificate is self-signed; this is not Marketplace approval.
+
+The signed output is `build/distributions/ai-usage-trackers-1.0.1-signed.zip`;
 `buildPlugin` continues producing the unsigned ZIP. Signing-tool setup alone does
 not establish a signed or verified release; sign and verify each release artifact.
 

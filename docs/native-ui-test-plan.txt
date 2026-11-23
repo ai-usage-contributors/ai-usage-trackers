@@ -1,4 +1,22 @@
 NATIVE UI ACCEPTANCE PLAN
+CURRENT CANDIDATE: 1.0.1 (2026-11-23). All 47 scenarios (prior 46 plus N10)
+require execution on this candidate; earlier results below are historical.
+Owner reports local verification of the fix (N10 USER-PASS); controlled variants
+and the remaining replay are NOT RUN. Agent native execution still requires
+explicit user authorization.
+N10 - Monitor disconnect/reconnect recovery: with synthetic multi-vendor data,
+exercise ribbon pixel and step modes, outer carousel, hover chooser, focused
+widget shortcuts and editor/tool-window shortcuts. Disconnect the second monitor
+with the pointer over the ribbon, carousel, popup and outside the widget; reconnect
+and repeat. Expect no EDT exceptions, usable refresh/manual controls, conservative
+hover behavior during unavailable readings and automatic recovery. Repeat with
+the IDE on either monitor and across two project windows; verify disposal/reopen.
+Capture the exact artifact/source identity, IDE/OS/display/input setup, fixtures,
+observations and IDE log evidence using the record template. Existing tests remain
+in scope for fresh installation and upgrade from 1.0.0.
+The remaining plan preserves previous run context and stable scenario IDs.
+
+HISTORICAL 1.0.0 PLAN CONTEXT (retained for replay and earlier run evidence)
 New candidate scenario N09: first-load agreement and public metadata links.
 The candidate inventory is now 46 scenarios; prior 45-scenario results remain historical.
 Test fresh/upgraded profiles, popup policy link without agreement, Not Now and window
@@ -58,7 +76,7 @@ Prerequisites:
   the evidence establishes that.
 
 Preparation commands from the repository root (once execution is authorized):
-  Get-FileHash -Algorithm SHA256 -LiteralPath build/distributions/ai-usage-trackers-1.0.0.zip
+  Get-FileHash -Algorithm SHA256 -LiteralPath build/distributions/ai-usage-trackers-1.0.1.zip
   python tools/synthetic-usage/generate.py
   .\gradlew.bat runIde '--args=C:/source/ai-usage-trackers/agent-logs/ui-test-project'
 

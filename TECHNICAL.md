@@ -1,6 +1,6 @@
 # AI Usage Trackers — technical reference
 
-This describes implementation version **1.0.0**, reviewed on **2026-11-16**.
+This describes implementation version **1.0.1**, reviewed on **2026-11-23**.
 Source links identify the implementation; external links explain terminology and
 provider contracts. Historical release notes describe earlier behavior, not
 additional current features.
@@ -159,7 +159,7 @@ The plugin logo uses the supplied Lucide-based chart drawing, packaged as
 padding. Explicit blue strokes (`#3574F0` light, `#6EC5FF` dark) avoid relying on
 inherited CSS colors. The ISC notice is bundled in `licenses/lucide-ISC.txt`.
 See [JetBrains logo requirements](https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html).
-The version remains **1.0.0** until the owner explicitly requests a change.
+The current plugin version is **1.0.1**.
 
 The package includes third-party notices and capture resources, excluding helper
 tests and Python cache files. Windows is the initial validation environment;
@@ -278,7 +278,7 @@ Python tests compare deterministic output against the committed synthetic fixtur
 `SyntheticUsageGeneratorTest` imports those fixtures through the real Kotlin/database
 paths and checks repeated import, interval boundaries, cached input and quota values.
 The generator is a repository tool and is not bundled in the plugin distribution.
-The plugin version remains 1.0.0; no collection/runtime behavior changes.
+The synthetic generator does not change collection semantics.
 
 ## 6. Database and persistence
 
@@ -648,7 +648,19 @@ by measured width. Shared rows contain individually selectable buttons; limited
 screen height adds vertical scrolling. Hover does not steal editor focus.
 **Alt+Down** opens from focused ribbon; arrows navigate, Enter selects, Escape
 dismisses. A **50 ms** monitor uses a **200 ms** pointer-transfer grace period
-between ribbon and popup.
+between ribbon and popup. If an AWT pointer query throws an
+`ArrayIndexOutOfBoundsException` during a display change, `WidgetPointer` reports
+an unavailable reading. Automatic ribbon/carousel advancement pauses; existing
+transitions may finish. No hover-open/hover-end callback is issued from an unavailable
+ribbon reading. The popup stays open unless a reliable outside reading lasts the full
+**200 ms** grace period; unavailable readings reset that deadline. Queries retry on
+the existing **25 ms** animation and **50 ms** popup ticks without repeated error logs.
+Keyboard agent navigation requires confirmed hover or widget focus; unavailable
+pointer information alone never claims IDE shortcuts. Normal presentation refresh
+and explicit navigation remain available. Other exceptions are not swallowed.
+Owner-reported local testing verifies the fix; controlled monitor variants remain
+unexecuted. See N10 in the
+[testing record](docs/native-ui-testing.txt).
 
 ### 10.3 Automatic width and notices
 
@@ -945,7 +957,7 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 
 | Plugin version | Principal change |
 | --- | --- |
-| 1.0.1 | Expand Marketplace metadata with feature descriptions and public project, documentation, support and license links. |
+| 1.0.1 | Guard AWT pointer queries during display changes; pause automatic advancement and defer hover dismissal while unavailable, then recover automatically. Owner-reported local verification; controlled N10 variants remain unexecuted. |
 | 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, IDE-first hover shortcut consumption, and explicit local processing agreement with a first-load popup and privacy link. |
 | 0.18.8 | Remove support for older portable configuration and database schema versions. |
 | 0.18.7 | Simplify display decoding, session import and widget rendering control flow. |

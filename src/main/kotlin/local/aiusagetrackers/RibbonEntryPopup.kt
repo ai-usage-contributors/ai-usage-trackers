@@ -30,8 +30,10 @@ internal class RibbonEntryPopup(private val project: Project, private val ribbon
         val current = popup
         if (current != null) {
             val focused = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
-            val inside = ribbon.getMousePosition(true) != null || current.content.getMousePosition(true) != null ||
+            val inside = WidgetPointer.anyInside(
+                WidgetPointer.inside(ribbon), WidgetPointer.inside(current.content),
                 focused?.let { SwingUtilities.isDescendingFrom(it, current.content) } == true
+            )
             if (hoverLifetime.shouldClose(inside)) close()
         }
     }
@@ -118,8 +120,8 @@ internal class RibbonEntryPopup(private val project: Project, private val ribbon
     companion object {
         internal class HoverLifetime(private val nanoTime: () -> Long = System::nanoTime) {
             private var outsideSince: Long? = null
-            fun shouldClose(inside: Boolean): Boolean {
-                if (inside) { outsideSince = null; return false }
+            fun shouldClose(inside: Boolean?): Boolean {
+                if (inside != false) { outsideSince = null; return false }
                 val now = nanoTime()
                 val start = outsideSince ?: now.also { outsideSince = it }
                 return now - start >= 200_000_000L

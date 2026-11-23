@@ -84,6 +84,8 @@ Scroll or drag over the agent's ribbon to move through that agent's entries.
 
 The widget follows the IDE's light or dark theme. While hovering the widget,
 its agent shortcuts leave the focused editor or tool window unchanged.
+If a display change temporarily prevents pointer detection, automatic movement
+pauses and resumes when detection recovers.
 
 Each tracker counts usage for its selected account. Choose that account in the
 tracker editor. The **Quota account** selector chooses which account's quota

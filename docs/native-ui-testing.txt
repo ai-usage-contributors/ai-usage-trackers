@@ -1,5 +1,5 @@
 NATIVE UI TESTING RECORD - GIVEN / WHEN / THEN
-Maintained: 2026-11-16 | Next planned plugin version: 1.0.0
+Maintained: 2026-11-23 | Next planned plugin version: 1.0.1
 
 1. HOW TO READ THIS RECORD
 
@@ -713,3 +713,58 @@ individual controlled subvariants are not inferred executed. Earlier results are
 Observed owner result: local installed plugin tested; owner requests USER-TESTED
 and reports readiness for publication. No new defects reported. Independent screen-reader
 verification remains blocked as previously recorded; no such result is inferred.
+
+11. CANDIDATE 1.0.1 - DISPLAY CHANGE RECOVERY (2026-11-23)
+
+Scope: all previous 46 scenarios plus N10. N10 now has owner-reported functional
+verification (see below); the detailed controlled variants and replay of the other
+46 scenarios remain NOT RUN on 1.0.1. No historical pass is carried forward.
+Agent native execution has not been authorized. Automated checks are separate.
+
+N10 / disconnect-reconnect, both screen placements and two project windows:
+Plugin: 1.0.1. Artifact SHA256/source snapshot: see candidate identity below.
+Execution date / IDE build / OS / display and input environment: NOT RUN; pending.
+Fixtures: planned synthetic multi-vendor usage, pixel and step ribbons, hover popup.
+Given: a laptop with a connected second monitor and an installed candidate.
+When: disconnect/reconnect while hovering each widget/popup or outside it,
+and exercise widget-focus and editor-focus shortcuts, refresh, disposal/reopen.
+Then (expected): no EDT exception; unavailable pointer readings pause automatic
+advancement and defer hover changes; focus/manual interaction stays usable;
+normal hover, dismissal grace and movement recover without an IDE restart.
+Observed (owner report received 2026-11-23): local testing verified the fix is working.
+Status: USER-PASS for owner-reported functional verification of the fix.
+Exact execution date, installed hash, IDE build, OS/display/input setup, fixtures,
+individual variants and restoration evidence were not supplied. These are not
+inferred from the report. Controlled agent execution remains NOT RUN.
+
+Candidate identity (packaged 2026-11-23; automated evidence only):
+Unsigned ZIP: ai-usage-trackers-1.0.1.zip
+SHA256: 3B6CAEECA84355D4FA3430FA7F5FF417B482B6884FEC5EB49B307EF618F6AFA3
+Source: c20a80fd0ed180a608fd4641b940e95de705d9f7 plus the local source changes
+identified by pointer-1.0.1-source-manifest.csv in the external agent log directory.
+Manifest SHA256: 235A934AD081C0372CB2B64E1CB4F2B741DE78C9D8F35CB80392E64C4F3B01B8
+Automated: 266 standard Gradle tests pass (zero failures/errors), packaging and
+configuration checks pass; all changed Kotlin/tests/build/XML IDEA inspections
+are clean. Final-archive Plugin Verifier 1.411 result: Compatible with IDEA
+2026.3 / IU-263.7307.200. Evidence: pointer-1.0.1-final-tests.log,
+pointer-1.0.1-final-build.log, pointer-1.0.1-final-compatibility.log and
+pointer-1.0.1-inspections.json in the external agent log directory.
+Agent native execution: NOT RUN. Owner-reported functional verification of N10
+is recorded above; a full controlled native matrix and replay of the previous
+46 scenarios are not established. No performance measurements were performed.
+
+Signed candidate (2026-11-23): ai-usage-trackers-1.0.1-signed.zip
+SHA256: 4DB80B25F29989BDFA9BEDF30E3841352A0B6075FC26D72F09A56ACAA8F14218
+ZIP Signer 0.1.45 signed the existing tested unsigned archive without rebuilding.
+Signature verification against the replacement certificate exited 0. Every ZIP
+payload entry matches the unsigned candidate; its SHA256 above is unchanged.
+The password in the specified Windows Generic Credential did not unlock the old
+keystore. Under owner authorization, a separate RSA-4096 / SHA256withRSA signing
+keystore and self-signed certificate were created; the old keystore was preserved.
+Certificate subject: CN=AI Usage Trackers contributors.
+Certificate SHA256: 88D9C478B7F5A1508AFF1D3CB340AB2C5DE4DF878C77A2C6D4C647DCDF632263
+Validity: 2026-11-23 through 2036-11-20. This is a new signing identity.
+Evidence: pointer-1.0.1-final-signature-verification.log and
+pointer-1.0.1-signed-artifact.json in the external agent log directory.
+No additional local testing is needed for signing; broader native coverage is
+unchanged from the scope recorded above. No commit, push or publication.

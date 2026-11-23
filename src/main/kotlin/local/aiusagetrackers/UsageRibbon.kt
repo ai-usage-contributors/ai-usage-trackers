@@ -14,6 +14,7 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
     IdeGlassPane.TopComponent {
     override fun canBePreprocessed(e: MouseEvent): Boolean = e !is MouseWheelEvent && !SwingUtilities.isLeftMouseButton(e)
 
+    internal var pointerInside: (Container) -> Boolean? = { WidgetPointer.inside(it) }
     private var logicalWidth = 280
     private var autoExpand = false
     private var chooserWidthReserve = 0
@@ -407,7 +408,10 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
         }
         val maximum = maximumOffset()
         offset = offset.coerceIn(0.0, maximum.toDouble())
-        val pointerInside = isShowing && getMousePosition(true) != null
+        val pointerInside = pointerInside(this)
+        if (pointerInside == null) {
+            nextStep = now + intervalNanos(); return
+        }
         val focused = isFocusOwner || KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner?.let {
             isAncestorOf(it)
         } == true
