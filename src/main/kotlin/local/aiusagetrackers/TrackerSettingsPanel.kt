@@ -144,6 +144,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private val mode = JComboBox(arrayOf(PeriodMode.CALENDAR, PeriodMode.ELAPSED, PeriodMode.PROVIDER_WEEK))
     private val selection = JComboBox(DaySelection.entries.toTypedArray())
     private val current = JCheckBox("Include the current period", true)
+    private val resetDailyAtWeeklyReset = JCheckBox("Also reset daily usage at weekly reset")
     private val visible = JCheckBox("Show in status bar", true)
     private val showPeriodStart = JCheckBox("Show period start in status bar")
     private val equivalence = JButton(AllIcons.General.Information).apply {
@@ -212,13 +213,19 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         list.addListSelectionListener { if (!loading && !it.valueIsAdjusting) loadSelected() }
         fun row(label: String, component: JComponent, help: String, control: JComponent = component) {
             explain(component, help)
-            fields.addRow(JLabel(label).apply { labelFor = control; toolTipText = component.toolTipText }, component)
+            fields.addRow(JLabel(label).apply { labelFor = control; explain(this, help) }, component)
         }
         fields.section("Period")
         fields.addRow(legacyNotice, replaceLegacy)
         row("Name", name, "Name shown in the tracker list and usage details.")
         row("Account / token dataset", trackerAccount, "Choose the account whose token usage this tracker counts.")
         row("Quota pool", trackerPool, "Choose the quota limit that supplies this tracker's weekly reset.")
+        row(
+            "Weekly reset alignment",
+            resetDailyAtWeeklyReset,
+            "For one current calendar day, start counting again at the selected account's weekly quota reset. " +
+                "If no weekly reset is available, use the usual daily boundary."
+        )
         row(
             "Amount",
             amount,
@@ -563,7 +570,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             )
         }
         listOf(unit, mode, selection, endAnchor).forEach { it.addActionListener { changed() } }
-        listOf(current, visible, showPeriodStart).forEach { it.addActionListener { changed() } }
+        listOf(current, visible, showPeriodStart, resetDailyAtWeeklyReset).forEach { it.addActionListener { changed() } }
         listOf(amount, endOffset).forEach { it.addChangeListener { changed() } }
         val formatListener = object : DocumentListener {
             override fun insertUpdate(e: DocumentEvent) = presentationChanged()
@@ -639,6 +646,14 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         showPercentUsed.isEnabled = QuotaEligibility.budget(capabilities)
         quotaColors.isEnabled = QuotaEligibility.budget(capabilities)
         palette.quotaApplicable(capabilities.weekly || QuotaEligibility.budget(capabilities))
+        updateAuxiliaryControls(capabilities)
+        listOf(palette, trackerColors, weeklyPacing, analyticsEditor.colorWeeklyQuota).forEach {
+            setSettingVisible(it, coloringEnabled.isSelected, coloringEnabled)
+        }
+        rebuildTrackerColors()
+    }
+
+    private fun updateAuxiliaryControls(capabilities: PlanCapabilities) {
         fixedAuxiliary.forEach { (id, control) ->
             val duration = id.substringAfter(':', "").toIntOrNull()
             val decision = duration?.let { QuotaEligibility.metric(capabilities, it, id.startsWith("reset:")) }
@@ -650,10 +665,6 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
                 )
             }
         }
-        listOf(palette, trackerColors, weeklyPacing, analyticsEditor.colorWeeklyQuota).forEach {
-            setSettingVisible(it, coloringEnabled.isSelected, coloringEnabled)
-        }
-        rebuildTrackerColors()
     }
 
     private fun rebuildTrackerColors() {
@@ -978,22 +989,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             listOf(
                 name to value.name, zone to value.zoneId
             ).forEach { (field, text) -> field.text = text }
-            providerLoading = true
-            trackerAccount.selectedItem = (0 until trackerAccount.itemCount).map(trackerAccount::getItemAt)
-                .firstOrNull { it.id == value.accountId }
-            providerLoading = false
-            providerLoading = true
-            trackerPool.removeAllItems()
-            trackerPool.addItem(AccountChoice("", "Account default (legacy behavior)"))
-            val profile = generalEditor.value().profiles.firstOrNull { it.id == value.accountId }
-            val pools =
-                if (profile?.vendor == UsageVendor.CLAUDE) profile.analytics.capabilities().pools.filter { it.fixedWeek }
-                    .map { it.id } else emptyList()
-            (pools + value.quotaPoolId).filter { it.isNotBlank() }.distinct()
-                .forEach { trackerPool.addItem(AccountChoice(it, it)) }
-            trackerPool.selectedItem =
-                (0 until trackerPool.itemCount).map(trackerPool::getItemAt).firstOrNull { it.id == value.quotaPoolId }
-            providerLoading = false
+            loadTrackerBinding(value)
             amount.value = value.amount
             endOffset.value = value.endOffset
             unit.selectedItem = value.unit
@@ -1001,6 +997,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             selection.selectedItem = value.selection
             endAnchor.selectedItem = value.endAnchor
             current.isSelected = value.includeCurrent
+            resetDailyAtWeeklyReset.isSelected = value.resetDailyAtWeeklyReset
             visible.isSelected = value.visible
             showPeriodStart.isSelected = value.showPeriodStart
             enableFields()
@@ -1009,6 +1006,23 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
 
 
         schedulePreview()
+    }
+
+    private fun loadTrackerBinding(value: TrackerDefinition) {
+        providerLoading = true
+        trackerAccount.selectedItem = (0 until trackerAccount.itemCount).map(trackerAccount::getItemAt)
+            .firstOrNull { it.id == value.accountId }
+        trackerPool.removeAllItems()
+        trackerPool.addItem(AccountChoice("", "Account default (legacy behavior)"))
+        val profile = generalEditor.value().profiles.firstOrNull { it.id == value.accountId }
+        val pools =
+            if (profile?.vendor == UsageVendor.CLAUDE) profile.analytics.capabilities().pools.filter { it.fixedWeek }
+                .map { it.id } else emptyList()
+        (pools + value.quotaPoolId).filter { it.isNotBlank() }.distinct()
+            .forEach { trackerPool.addItem(AccountChoice(it, it)) }
+        trackerPool.selectedItem =
+            (0 until trackerPool.itemCount).map(trackerPool::getItemAt).firstOrNull { it.id == value.quotaPoolId }
+        providerLoading = false
     }
 
     private fun readSelected(): TrackerDefinition = list.selectedValue.copy(
@@ -1021,6 +1035,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         mode = mode.selectedItem as PeriodMode,
         selection = selection.selectedItem as DaySelection,
         includeCurrent = current.isSelected,
+        resetDailyAtWeeklyReset = resetDailyAtWeeklyReset.isSelected,
         visible = visible.isSelected,
         showPeriodStart = showPeriodStart.isSelected,
         zoneId = zone.text.trim(),
@@ -1073,7 +1088,9 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private fun enableFields() {
         showPercentUsed.isEnabled = QuotaEligibility.budget(trackerCapabilities())
         quotaColors.isEnabled = showPercentUsed.isEnabled
-        val legacy = list.selectedValue?.usesLegacySchedule() == true
+        val draft = readSelected()
+        setSettingVisible(resetDailyAtWeeklyReset, draft.supportsDailyWeeklyReset(), mode)
+        val legacy = draft.usesLegacySchedule()
         val shown = trackerSettingVisibility(
             mode.selectedItem as PeriodMode, unit.selectedItem as SpanUnit,
             endAnchor.selectedItem as EndAnchor, legacy

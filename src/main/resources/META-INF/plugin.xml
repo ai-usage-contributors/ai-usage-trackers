@@ -23,6 +23,7 @@
         · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/blob/master/PRIVACY.md">Privacy Policy</a></p>
     ]]></description>
     <change-notes><![CDATA[
+        <p>1.1.0: A current-day tracker can also restart at the selected weekly quota reset.</p>
         <p>1.0.1: Recover safely when monitor changes temporarily prevent pointer detection.
         Automatic movement pauses and hover popups remain stable until detection recovers.</p>
         <p>1.0.0: Track local AI usage with configurable status-bar trackers,

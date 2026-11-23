@@ -1,6 +1,6 @@
 # AI Usage Trackers — technical reference
 
-This describes implementation version **1.0.1**, reviewed on **2026-11-23**.
+This describes implementation version **1.1.0**, reviewed on **2026-11-23**.
 Source links identify the implementation; external links explain terminology and
 provider contracts. Historical release notes describe earlier behavior, not
 additional current features.
@@ -159,7 +159,7 @@ The plugin logo uses the supplied Lucide-based chart drawing, packaged as
 padding. Explicit blue strokes (`#3574F0` light, `#6EC5FF` dark) avoid relying on
 inherited CSS colors. The ISC notice is bundled in `licenses/lucide-ISC.txt`.
 See [JetBrains logo requirements](https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html).
-The current plugin version is **1.0.1**.
+The current plugin version is **1.1.0**.
 
 The package includes third-party notices and capture resources, excluding helper
 tests and Python cache files. Windows is the initial validation environment;
@@ -395,6 +395,15 @@ with positive recorded usage. These resolve to disjoint daily intervals; exclude
 days do not leak into the total. Provider weeks and quota calculations include
 every day, including weekends and holidays. No holiday calendar is inferred.
 
+**Also reset daily usage at weekly reset** is off by default and applies to
+one current, automatic calendar day. It uses the tracker's account and
+`quota pool`, with the same scope and resolved weekly boundary as the
+provider week (section 8.2). If that instant falls inside the selected day,
+it becomes the inclusive start while the calendar end stays in place. Day
+selection, time zone and historical records are preserved. Without a usable
+boundary, the tracker keeps its normal daily total and explains the fallback
+in its period details. The saved choice is retained if the period changes.
+
 A blank zone follows the system zone provider on each evaluation. Calendar
 boundaries follow DST; Java local-time conversion shifts gap times forward and
 chooses the earlier offset for overlaps. Minute/hour arithmetic follows the
@@ -533,7 +542,7 @@ drafts on **Cancel**, with the local preview-pin exception below.
 | **General — Displayed usage** | **Displayed vendor**, **Multi-vendor carousel**, vendor inclusion boxes, motion mode, speed, independent horizontal/vertical intervals, and vertical direction. |
 | **General — Vendor tracking and widget prefix** | **Configure vendor**, **Track usage**, **Widget prefix**, and **Advanced…**, which opens the same vendor's account/source setup. Editing a vendor is independent of selecting the displayed vendor. |
 | **Trackers — list/editor** | Top toolbar: **Add New**, **Remove**, **Move Up**, **Move Down**, **Duplicate**, **Import**, **Export**; drag handles support reorder. A draggable gray splitter separates the list from the editor. |
-| **Trackers — Period** | Name; explicit account/token dataset and editable quota-pool selector; amount; unit with equivalence-info button; period type; day selection; current-period inclusion; visibility; minute/hour boundary display; time zone; elapsed ending boundary/offset. Legacy schedule summary/conversion appears where applicable. |
+| **Trackers — Period** | Name; explicit account/token dataset and editable quota-pool selector; amount; unit with equivalence-info button; period type; day selection; current-period inclusion; optional weekly reset alignment for one current calendar day; visibility; minute/hour boundary display; time zone; elapsed ending boundary/offset. Legacy schedule summary/conversion appears where applicable. |
 | **Trackers — Status bar / Period details** | Automatic/Fixed/Ribbon placement, hide label, percentage suffix; expandable background-resolved intervals/totals. Long interval descriptions show the first 20 intervals. |
 | **Trackers — Last request** | Show last request, label, hide label, and approximate percentage suffix. |
 | **Quota — account and plan capabilities** | **Quota account**, vendor-specific **Quota scheme**, and display of other pools with unknown boundary schemes. Switching accounts preserves each account's drafts. |
@@ -750,11 +759,13 @@ priority when clicking that shared button.
 [TrackerConfigurationJson.kt](src/main/kotlin/local/aiusagetrackers/TrackerConfigurationJson.kt)
 uses UTF-8 JSON with format identifier `codex-usage-trackers`. The configuration
 format version is independent of plugin, database, and parser versions.
-The suggested filename is `ai-usage-trackers.json`. Imports and exports use
-configuration format version 11; older versions are rejected.
+The suggested filename is `ai-usage-trackers.json`. Imports accept formats v11
+and v12. An export uses v12 if any tracker has daily weekly reset alignment
+enabled, and v11 otherwise. A v11 import defaults the option to off. Earlier
+plugin versions with v11-only readers cannot import a v12 export.
 
 Exports contain tracker definitions and optional appearance/General display
-preferences. V11 stores logical vendor/alias bindings and quota-pool IDs, not
+preferences. Both versions store logical vendor/alias bindings and quota-pool IDs, not
 database account identities. Import explicitly maps bindings to local accounts
 or leaves them unresolved; a missing pool stays unavailable. Optional General import cannot enable collection or install
 callbacks.
@@ -957,6 +968,7 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 
 | Plugin version | Principal change |
 | --- | --- |
+| 1.1.0 | Opt-in daily usage rollover at the selected weekly quota reset, with portable configuration support. |
 | 1.0.1 | Guard AWT pointer queries during display changes; pause automatic advancement and defer hover dismissal while unavailable, then recover automatically. Owner-reported local verification; controlled N10 variants remain unexecuted. |
 | 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, IDE-first hover shortcut consumption, and explicit local processing agreement with a first-load popup and privacy link. |
 | 0.18.8 | Remove support for older portable configuration and database schema versions. |

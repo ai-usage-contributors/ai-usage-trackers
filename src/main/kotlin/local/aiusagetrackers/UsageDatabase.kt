@@ -246,21 +246,7 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         transaction {
             connection.createStatement().use { it.executeUpdate("DELETE FROM staged WHERE seq>=0") }
             analytics.clear()
-            var count = 0L
-            var chain = ""
-            val summary = connection.prepareStatement("INSERT INTO staged VALUES(?,?,?,?,?)").use { insert ->
-                val parsed = CodexSessionParser().stream(file, checkCancelled, analytics::stage) { (time, total) ->
-                    chain = hash("$chain:${time.epochSecond}:${time.nano}:$total")
-                    insert.setLong(1, count++); insert.setLong(2, time.epochSecond); insert.setInt(
-                    3,
-                    time.nano
-                ); insert.setLong(4, total); insert.setString(5, chain)
-                    insert.addBatch()
-                    if (count % 256 == 0L) insert.executeBatch()
-                }
-                insert.executeBatch()
-                parsed
-            }
+            val (summary, count) = stageCodexFile(file, checkCancelled)
             checkCancelled()
             val after = Files.readAttributes(file, BasicFileAttributes::class.java)
             check(after.size() == attrs.size() && after.lastModifiedTime() == attrs.lastModifiedTime()) { "Log changed during import; previous reading retained" }
@@ -321,6 +307,25 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
                 }
             checkCancelled()
         }
+    }
+
+    private fun stageCodexFile(file: Path, checkCancelled: () -> Unit): Pair<CodexSessionParser.Summary, Long> {
+        var count = 0L
+        var chain = ""
+        val summary = connection.prepareStatement("INSERT INTO staged VALUES(?,?,?,?,?)").use { insert ->
+            val parsed = CodexSessionParser().stream(file, checkCancelled, analytics::stage) { (time, total) ->
+                chain = hash("$chain:${time.epochSecond}:${time.nano}:$total")
+                insert.setLong(1, count++); insert.setLong(2, time.epochSecond); insert.setInt(
+                3,
+                time.nano
+            ); insert.setLong(4, total); insert.setString(5, chain)
+                insert.addBatch()
+                if (count % 256 == 0L) insert.executeBatch()
+            }
+            insert.executeBatch()
+            parsed
+        }
+        return summary to count
     }
 
     private fun isAmbiguousIdentity(
@@ -507,16 +512,7 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
             )
             resolver.validate(definition)
             val selectedZone = definition.zoneId.takeIf { it.isNotBlank() }?.let(ZoneId::of) ?: zone
-            val reading = QuotaPresentation.select(
-                QuotaPresentation.forPool(
-                    UsageSnapshot(
-                        collection = collection(),
-                        analytics = analytics(collection().lastCompleted ?: now),
-                        evaluatedAt = now
-                    ), definition.quotaPoolId
-                ), if (definition.quotaPoolId.isBlank()) options else options.copy(quotaScope = "")
-            ).reading
-            val week = ResetWeekResolver.resolve(reading, now)
+            val week = resolveResetWeek(definition, now, options)
                 ?: return TrackerResult(
                     definition,
                     ResolvedPeriod(emptyList(), selectedZone),
@@ -534,7 +530,53 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
                 checkCancelled
             )
         }
-        return evaluateResolved(definition, period, now, checkCancelled)
+        val effectivePeriod = if (definition.resetDailyAtWeeklyReset && definition.supportsDailyWeeklyReset()) {
+            alignDailyPeriod(definition, period, now, options)
+        } else period
+        return evaluateResolved(definition, effectivePeriod, now, checkCancelled)
+    }
+
+    private fun resolveResetWeek(
+        definition: TrackerDefinition,
+        now: Instant,
+        options: AnalyticsDisplayOptions,
+    ): ResetWeek? {
+        val collected = collection()
+        val snapshot = UsageSnapshot(
+            collection = collected,
+            analytics = analytics(collected.lastCompleted ?: now),
+            evaluatedAt = now
+        )
+        val scopeOptions = if (definition.quotaPoolId.isBlank()) options else options.copy(quotaScope = "")
+        val reading = QuotaPresentation.select(
+            QuotaPresentation.forPool(snapshot, definition.quotaPoolId), scopeOptions
+        ).reading
+        return ResetWeekResolver.resolve(reading, now)
+    }
+
+    private fun alignDailyPeriod(
+        definition: TrackerDefinition,
+        period: ResolvedPeriod,
+        now: Instant,
+        options: AnalyticsDisplayOptions,
+    ): ResolvedPeriod {
+        val week = if (options.capabilities().weekly) resolveResetWeek(definition, now, options) else null
+        if (week == null) {
+            return period.copy(issues = period.issues +
+                "Daily usage uses its normal boundary because no weekly reset is available for the selected account and quota pool")
+        }
+
+        val reset = week.interval.start
+        val intervals = period.intervals.map { interval ->
+            if (reset > interval.start && reset < interval.end) interval.copy(start = reset) else interval
+        }
+        if (intervals == period.intervals) return period
+        val alignment = when {
+            week.scheduled -> "Daily usage starts at the scheduled weekly reset; awaiting a fresh provider observation"
+            week.inferred -> "Daily usage starts at the inferred weekly reset"
+            else -> "Daily usage starts at the weekly reset"
+        }
+        return period.copy(intervals = intervals, issues = period.issues + alignment)
     }
 
     private fun evaluateResolved(

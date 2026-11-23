@@ -154,25 +154,26 @@ class TrackerWidgetPreview(private val move: (String, Int) -> Unit) : JPanel(Bor
         )
         for (definition in definitions.filter { it.visible }) {
             if (labels.isNotEmpty()) row.add(JLabel("·"))
-            val result = TrackerResult(
-                definition,
-                ResolvedPeriod(listOf(UsageInterval(now.minusSeconds(3600), now)), ZoneOffset.UTC), 1_230_000
-            )
-            val sample = if (sampleState.selectedIndex == 1) result.copy(total = null) else result
-            val value = WidgetText.trackerValue(sample, now, preferences, quota).let {
-                if (sampleState.selectedIndex == 2) it.copy(
-                    text = "loading",
-                    raw = null,
-                    state = StatusValueState.LOADING
-                ) else it
-            }
-            val label = sampleLabel(definition, value)
+            val label = sampleLabel(definition, sampleValue(definition, now, quota))
             labels += label
             row.add(label)
         }
         if (labels.isEmpty()) row.add(JLabel("No visible trackers"))
         row.components.filterIsInstance<JLabel>().forEach { it.font = WidgetAppearance.font(preferences, it.font) }
         row.revalidate(); row.repaint()
+    }
+
+    private fun sampleValue(
+        definition: TrackerDefinition,
+        now: Instant,
+        quota: QuotaMetricPresentation,
+    ): StatusValue {
+        val period = ResolvedPeriod(listOf(UsageInterval(now.minusSeconds(3600), now)), ZoneOffset.UTC)
+        val total = if (sampleState.selectedIndex == 1) null else 1_230_000L
+        val value = WidgetText.trackerValue(TrackerResult(definition, period, total), now, preferences, quota)
+        return if (sampleState.selectedIndex == 2) {
+            value.copy(text = "loading", raw = null, state = StatusValueState.LOADING)
+        } else value
     }
 
     private fun sampleLabel(definition: TrackerDefinition, value: StatusValue): JLabel {

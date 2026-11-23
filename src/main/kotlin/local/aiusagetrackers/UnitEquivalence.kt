@@ -8,10 +8,12 @@ object UnitEquivalence {
             SpanUnit.DAY -> 7
             else -> return null
         }
-        if (definition.amount % divisor != 0) return null
-        val exact = definition.mode == PeriodMode.ELAPSED ||
-                (definition.mode == PeriodMode.REPEATING && definition.unit in setOf(SpanUnit.MINUTE, SpanUnit.DAY))
-        if (!exact) return null
+        when {
+            definition.amount % divisor != 0 -> return null
+            definition.mode == PeriodMode.ELAPSED -> Unit
+            definition.mode == PeriodMode.REPEATING && definition.unit in setOf(SpanUnit.MINUTE, SpanUnit.DAY) -> Unit
+            else -> return null
+        }
         val next =
             when (definition.unit) {
                 SpanUnit.MINUTE -> "${if (definition.mode == PeriodMode.REPEATING) "repeating" else "elapsed"} hour"

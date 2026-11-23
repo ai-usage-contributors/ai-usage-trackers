@@ -35,14 +35,19 @@ object UsageSourceRegistry {
             while (true) {
                 checkCancelled()
                 val c = reader.read()
-                if (c == -1) {
-                    consumeNonBlank(line, profile, consume)
-                    break
-                }
-                if (c == '\n'.code) {
-                    consumeNonBlank(line, profile, consume); line = StringBuilder()
-                } else {
-                    require(line.length < MAX_LINE_CHARS) { "Report record exceeds 1 MiB" }; line.append(c.toChar())
+                when (c) {
+                    -1 -> {
+                        consumeNonBlank(line, profile, consume)
+                        break
+                    }
+                    '\n'.code -> {
+                        consumeNonBlank(line, profile, consume)
+                        line = StringBuilder()
+                    }
+                    else -> {
+                        require(line.length < MAX_LINE_CHARS) { "Report record exceeds 1 MiB" }
+                        line.append(c.toChar())
+                    }
                 }
             }
         }

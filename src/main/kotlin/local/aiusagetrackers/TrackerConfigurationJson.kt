@@ -42,6 +42,7 @@ data class TrackerConfiguration(
 /** Versioned portable DTO: explicitly excludes homes, database metadata and internal identities. */
 object TrackerConfigurationJson {
     const val MAX_BYTES = 1_048_576
+    private const val DAILY_RESET_FIELD = "resetDailyAtWeeklyReset"
     private val stringFields = setOf("name", "zoneId", "startTime", "endTime", "anchor", "fixedStart", "fixedEnd")
     private val booleanFields = setOf("includeCurrent", "visible", "showPeriodStart")
     private val trackerFields =
@@ -60,7 +61,7 @@ object TrackerConfigurationJson {
 
     fun encode(configuration: TrackerConfiguration): String {
         require(configuration.trackers.size <= 32) { "At most 32 trackers can be exported" }
-        val version = 11
+        val version = if (configuration.trackers.any { it.resetDailyAtWeeklyReset }) 12 else 11
         val root = JsonObject().apply {
             addProperty("format", "codex-usage-trackers")
             addProperty("version", version)
@@ -143,6 +144,7 @@ object TrackerConfigurationJson {
             require(index >= 0 || t.accountId == ProviderProfile.LEGACY_CODEX) { "Provide a logical account binding before export" }
             addProperty("account", if (index >= 0) "binding_$index" else "legacy-codex")
             addProperty("quotaPool", t.quotaPoolId)
+            if (t.resetDailyAtWeeklyReset) addProperty(DAILY_RESET_FIELD, true)
             addProperty("unit", key(t.unit)); addProperty("mode", key(t.mode)); addProperty(
             "selection",
             key(t.selection)
@@ -219,7 +221,8 @@ object TrackerConfigurationJson {
 
     private fun decodeTrackers(
         array: JsonElement,
-        bindings: List<PortableAccountBinding>
+        bindings: List<PortableAccountBinding>,
+        version: Int,
     ): List<TrackerDefinition> {
         return array.asJsonArray.mapIndexed { index, value ->
             try {
@@ -233,11 +236,12 @@ object TrackerConfigurationJson {
                         "ribbonPlacement",
                         "account",
                         "quotaPool"
-                    )
+                    ) + if (version == 12) setOf(DAILY_RESET_FIELD) else emptySet()
                 )
                 TrackerDefinition(
                     name = obj.string("name"),
                     quotaPoolId = obj.string("quotaPool", ""),
+                    resetDailyAtWeeklyReset = obj.boolean(DAILY_RESET_FIELD, false),
                     accountId = decodeAccount(obj, bindings),
                     amount = obj.integer("amount"),
                     unit = obj.enumValue("unit"),
@@ -331,23 +335,31 @@ object TrackerConfigurationJson {
 
     fun decode(text: String): TrackerConfiguration {
         require(text.toByteArray(StandardCharsets.UTF_8).size <= MAX_BYTES) { "Configuration exceeds 1 MiB" }
-        val root = JsonReader(StringReader(text)).use { reader ->
-            reader.strictness = Strictness.STRICT
-            val value = readValue(reader, 0).objectValue()
-            require(reader.peek() == JsonToken.END_DOCUMENT) { "Unexpected data after configuration" }
-            value
-        }
+        val root = readRoot(text)
         root.only(setOf("format", "version", "trackers", "display", "bindings", "general"))
         require(root.string("format") == "codex-usage-trackers") { "Not an AI Usage Trackers configuration" }
         val version = root.integer("version")
-        require(version == 11) { "Unsupported configuration version" }
+        require(version == 11 || version == 12) { "Unsupported configuration version" }
         val bindings = decodeBindings(root)
         val general = decodeGeneral(root)
-        val array = root.get("trackers")
-        require(array != null && array.isJsonArray && array.asJsonArray.size() <= 32) { "Expected an array of at most 32 trackers" }
-        val trackers = decodeTrackers(array, bindings)
+        val trackers = decodeTrackers(trackerArray(root), bindings, version)
         val display = decodeDisplay(root)
         return TrackerConfiguration(trackers, display, bindings, general)
+    }
+
+    private fun readRoot(text: String): JsonObject = JsonReader(StringReader(text)).use { reader ->
+        reader.strictness = Strictness.STRICT
+        val root = readValue(reader, 0).objectValue()
+        require(reader.peek() == JsonToken.END_DOCUMENT) { "Unexpected data after configuration" }
+        root
+    }
+
+    private fun trackerArray(root: JsonObject): JsonArray {
+        val array = root["trackers"]
+        require(array != null && array.isJsonArray && array.asJsonArray.size() <= 32) {
+            "Expected an array of at most 32 trackers"
+        }
+        return array.asJsonArray
     }
 
     fun read(path: Path): TrackerConfiguration = Files.newInputStream(path).use {
@@ -371,24 +383,8 @@ object TrackerConfigurationJson {
     private fun readValue(reader: JsonReader, depth: Int): JsonElement {
         require(depth <= 12) { "Configuration nesting is too deep" }
         return when (reader.peek()) {
-            JsonToken.BEGIN_OBJECT -> JsonObject().apply {
-                reader.beginObject()
-                while (reader.hasNext()) {
-                    val name = reader.nextName()
-                    require(name.length <= 128 && !has(name)) { "Invalid or duplicate field: ${name.take(128)}" }
-                    add(name, readValue(reader, depth + 1))
-                }
-                reader.endObject()
-            }
-
-            JsonToken.BEGIN_ARRAY -> JsonArray().apply {
-                reader.beginArray()
-                while (reader.hasNext()) {
-                    require(size() < 32) { "At most 32 entries are supported" }
-                    add(readValue(reader, depth + 1))
-                }
-                reader.endArray()
-            }
+            JsonToken.BEGIN_OBJECT -> readObject(reader, depth)
+            JsonToken.BEGIN_ARRAY -> readArray(reader, depth)
 
             JsonToken.STRING -> JsonPrimitive(
                 reader.nextString().also { require(it.length <= 4096) { "Configuration string is too long" } })
@@ -402,6 +398,25 @@ object TrackerConfigurationJson {
             JsonToken.BOOLEAN -> JsonPrimitive(reader.nextBoolean())
             else -> throw IllegalArgumentException("Expected an object, array, string, integer or boolean")
         }
+    }
+
+    private fun readObject(reader: JsonReader, depth: Int): JsonObject = JsonObject().apply {
+        reader.beginObject()
+        while (reader.hasNext()) {
+            val name = reader.nextName()
+            require(name.length <= 128 && !has(name)) { "Invalid or duplicate field: ${name.take(128)}" }
+            add(name, readValue(reader, depth + 1))
+        }
+        reader.endObject()
+    }
+
+    private fun readArray(reader: JsonReader, depth: Int): JsonArray = JsonArray().apply {
+        reader.beginArray()
+        while (reader.hasNext()) {
+            require(size() < 32) { "At most 32 entries are supported" }
+            add(readValue(reader, depth + 1))
+        }
+        reader.endArray()
     }
 
     private fun JsonElement.objectValue(): JsonObject {

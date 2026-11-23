@@ -29,6 +29,11 @@ class RenameCompatibilityTest {
         assertEquals(listOf("My daily total", "This week"), settings.trackers.map { it.name })
         assertEquals(listOf("today", "week"), settings.trackers.map { it.id })
         assertTrue(settings.trackers.all { it.accountId == ProviderProfile.LEGACY_CODEX })
+        assertTrue(settings.trackers.none { it.resetDailyAtWeeklyReset })
+
+        state.trackers.first().resetDailyAtWeeklyReset = true
+        val withDailyReset = XmlSerializer.deserialize(XmlSerializer.serialize(state), UsageSettings.SettingsState::class.java)
+        assertEquals(listOf(true, false), withDailyReset.trackers.map { it.resetDailyAtWeeklyReset })
         assertEquals(UsageVendor.entries.toSet(), settings.providers.profiles.map { it.vendor }.toSet())
         assertEquals(ProviderProfile.LEGACY_CODEX, settings.providers.collecting().single().id)
         val isolated = settings.state

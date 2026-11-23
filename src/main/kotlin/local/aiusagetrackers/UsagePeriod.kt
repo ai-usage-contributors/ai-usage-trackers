@@ -1,5 +1,7 @@
 package local.aiusagetrackers
 
+import com.intellij.util.xmlb.SkipDefaultValuesSerializationFilters
+import com.intellij.util.xmlb.annotations.Property
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
@@ -66,6 +68,8 @@ data class TrackerDefinition(
     var ribbonPlacement: RibbonPlacement = RibbonPlacement.AUTOMATIC,
     var accountId: String = ProviderProfile.LEGACY_CODEX,
     var quotaPoolId: String = "",
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var resetDailyAtWeeklyReset: Boolean = false,
 ) {
     fun fixedInWidget(): Boolean = when (ribbonPlacement) {
         RibbonPlacement.FIXED -> true
@@ -74,6 +78,9 @@ data class TrackerDefinition(
     }
 
     fun usesLegacySchedule(): Boolean = mode in setOf(PeriodMode.FIXED, PeriodMode.REPEATING) || startTime != "00:00" || endTime.isNotEmpty()
+
+    fun supportsDailyWeeklyReset(): Boolean =
+        mode == PeriodMode.CALENDAR && unit == SpanUnit.DAY && amount == 1 && includeCurrent && !usesLegacySchedule()
 
     fun automaticSchedule(): TrackerDefinition = copy(mode = PeriodMode.CALENDAR, startTime = "00:00", endTime = "",
         anchor = "2026-01-01T00:00", fixedStart = "", fixedEnd = "", includeCurrent = true,
@@ -167,57 +174,61 @@ class UsagePeriodResolver {
         val zone = definition.zoneId.takeIf(String::isNotBlank)?.let(ZoneId::of) ?: systemZone
         val local = now.atZone(zone)
         val time = LocalTime.parse(definition.startTime)
-        fun shiftedBoundary(unit: SpanUnit): ZonedDateTime {
-            val shifted = add(boundary(local, unit, time), unit, -definition.endOffset.toLong())
-            return if (unit == SpanUnit.HOUR || unit == SpanUnit.MINUTE) shifted else shifted.toLocalDate().atTime(time)
-                .atZone(zone)
-        }
-
-        fun result(start: ZonedDateTime, end: ZonedDateTime): ResolvedPeriod {
-            val interval = safeInterval(start, end)
-            return ResolvedPeriod(listOf(interval), zone, collapseIssues(listOf(interval), zone))
-        }
-        when (definition.mode) {
+        return when (definition.mode) {
             PeriodMode.PROVIDER_WEEK -> error("Provider context required")
-            PeriodMode.FIXED -> return result(
+            PeriodMode.FIXED -> rangeResult(
                 LocalDateTime.parse(definition.fixedStart).atZone(zone),
-                LocalDateTime.parse(definition.fixedEnd).atZone(zone)
+                LocalDateTime.parse(definition.fixedEnd).atZone(zone),
+                zone
             )
-
-            PeriodMode.ELAPSED -> {
-                val end = when (definition.endAnchor) {
-                    EndAnchor.NOW -> {
-                        require(definition.endOffset == 0) { "Now does not have a boundary offset" }; local
-                    }
-
-                    EndAnchor.MINUTE -> shiftedBoundary(SpanUnit.MINUTE)
-                    EndAnchor.HOUR -> shiftedBoundary(SpanUnit.HOUR)
-                    EndAnchor.DAY -> shiftedBoundary(SpanUnit.DAY)
-                    EndAnchor.WEEK -> shiftedBoundary(SpanUnit.WEEK)
-                    EndAnchor.MONTH -> shiftedBoundary(SpanUnit.MONTH)
-                }
-                val minutes = definition.amount.toLong() * when (definition.unit) {
-                    SpanUnit.MINUTE -> 1; SpanUnit.HOUR -> 60; SpanUnit.DAY -> 1440; SpanUnit.WEEK -> 10080; SpanUnit.MONTH -> error(
-                        "Calendar month required"
-                    )
-                }
-                return result(end.minusMinutes(minutes), end)
-            }
-
-            PeriodMode.REPEATING -> return repeating(definition, now, local, zone)
-
-            PeriodMode.CALENDAR -> Unit
+            PeriodMode.ELAPSED -> elapsed(definition, local, time)
+            PeriodMode.REPEATING -> repeating(definition, now, local, zone)
+            PeriodMode.CALENDAR -> calendar(definition, now, local, time, activeDates)
         }
-        val current = boundary(local, definition.unit, time)
-        if (definition.unit == SpanUnit.DAY) return calendarDays(definition, now, zone, current, activeDates)
-        fun calendarStep(value: ZonedDateTime, amount: Long): ZonedDateTime {
-            val stepped = add(value, definition.unit, amount)
-            return if (definition.unit == SpanUnit.HOUR || definition.unit == SpanUnit.MINUTE) stepped else stepped.toLocalDate()
-                .atTime(time).atZone(zone)
-        }
+    }
 
-        val end = calendarStep(current, if (definition.includeCurrent) 1 else 0)
-        return result(calendarStep(end, -definition.amount.toLong()), end)
+    private fun elapsed(definition: TrackerDefinition, local: ZonedDateTime, time: LocalTime): ResolvedPeriod {
+        val endUnit = when (definition.endAnchor) {
+            EndAnchor.NOW -> null
+            EndAnchor.MINUTE -> SpanUnit.MINUTE
+            EndAnchor.HOUR -> SpanUnit.HOUR
+            EndAnchor.DAY -> SpanUnit.DAY
+            EndAnchor.WEEK -> SpanUnit.WEEK
+            EndAnchor.MONTH -> SpanUnit.MONTH
+        }
+        val end = endUnit?.let {
+            stepBoundary(boundary(local, it, time), it, -definition.endOffset.toLong(), time)
+        } ?: local
+        val minutes = definition.amount.toLong() * when (definition.unit) {
+            SpanUnit.MINUTE -> 1
+            SpanUnit.HOUR -> 60
+            SpanUnit.DAY -> 1440
+            SpanUnit.WEEK -> 10080
+            SpanUnit.MONTH -> error("Calendar month required")
+        }
+        return rangeResult(end.minusMinutes(minutes), end, local.zone)
+    }
+
+    private fun calendar(
+        definition: TrackerDefinition,
+        now: Instant,
+        local: ZonedDateTime,
+        time: LocalTime,
+        activeDates: (TrackerDefinition, ZoneId, Instant) -> List<LocalDate>,
+    ): ResolvedPeriod {
+        val unit = definition.unit
+        val current = boundary(local, unit, time)
+        if (unit == SpanUnit.DAY) return calendarDays(definition, now, local.zone, current, activeDates)
+        val end = stepBoundary(current, unit, if (definition.includeCurrent) 1 else 0, time)
+        return rangeResult(stepBoundary(end, unit, -definition.amount.toLong(), time), end, local.zone)
+    }
+
+    private fun stepBoundary(value: ZonedDateTime, unit: SpanUnit, amount: Long, time: LocalTime): ZonedDateTime {
+        val stepped = add(value, unit, amount)
+        return when (unit) {
+            SpanUnit.MINUTE, SpanUnit.HOUR -> stepped
+            else -> stepped.toLocalDate().atTime(time).atZone(value.zone)
+        }
     }
 
     private fun rangeResult(start: ZonedDateTime, end: ZonedDateTime, zone: ZoneId): ResolvedPeriod {

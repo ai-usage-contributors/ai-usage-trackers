@@ -105,6 +105,9 @@ Choose a period type:
 - **Provider reset-aligned week (all days)** follows the selected weekly quota reset.
 
 Calendar-day trackers can include all days, Monday–Friday, or days with usage.
+For a tracker set to one current calendar day, **Also reset daily usage at weekly
+reset** starts the count over when the selected weekly quota resets. The usual
+midnight boundary applies on other days and when the reset time is unavailable.
 Reset-aligned weeks include weekends and holidays. Choose a time zone, or leave
 it blank to use your computer's time zone.
 

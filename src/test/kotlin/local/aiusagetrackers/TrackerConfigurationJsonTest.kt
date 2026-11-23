@@ -60,6 +60,21 @@ class TrackerConfigurationJsonTest {
     }
 
     @Test
+    fun dailyWeeklyResetUsesVersion12OnlyWhenEnabled() {
+        val v11 = JsonParser.parseString(encoded()).asJsonObject
+        assertEquals(11, v11.get("version").asInt)
+        assertTrue(TrackerConfigurationJson.decode(v11.toString()).trackers.none { it.resetDailyAtWeeklyReset })
+        val trackers = TrackerDefinition.defaults().mapIndexed { index, tracker ->
+            tracker.copy(resetDailyAtWeeklyReset = index == 0)
+        }
+        val v12 = JsonParser.parseString(TrackerConfigurationJson.encode(TrackerConfiguration(trackers))).asJsonObject
+        assertEquals(12, v12.get("version").asInt)
+        assertEquals(listOf(true, false), TrackerConfigurationJson.decode(v12.toString()).trackers.map { it.resetDailyAtWeeklyReset })
+        v12.addProperty("version", 11)
+        assertFailsWith<IllegalArgumentException> { TrackerConfigurationJson.decode(v12.toString()) }
+    }
+
+    @Test
     fun minimalContractSuppliesDefaultsAndAcceptsEmptyLists() {
         val minimal =
             """{"format":"codex-usage-trackers","version":11,"trackers":[{"name":"Hourly","account":"legacy-codex","unit":"hour","amount":1,"mode":"calendar"}]}"""
@@ -96,7 +111,7 @@ class TrackerConfigurationJsonTest {
             assertFailsWith<RuntimeException> { TrackerConfigurationJson.decode(root.toString()) }
         }
         (1..10).forEach { version -> reject { it.addProperty("version", version) } }
-        reject { it.addProperty("version", 12) }
+        reject { it.addProperty("version", 13) }
         reject { it.addProperty("version", "1") }
         reject { it.addProperty("format", "other") }
         reject { it.addProperty("extraHomes", "private path") }

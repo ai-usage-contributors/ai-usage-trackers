@@ -403,9 +403,7 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
         if (overlayPaused) {
             nextStep = now + intervalNanos(); return
         }
-        if (outgoingRow != null) {
-            if (now - transitionStarted >= transitionNanos) finishTransition() else repaint()
-        }
+        refreshTransition(now)
         val maximum = maximumOffset()
         offset = offset.coerceIn(0.0, maximum.toDouble())
         val pointerInside = pointerInside(this)
@@ -423,6 +421,11 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
             moveOffset(step, maximum, now)
         }
         if (viewPosition.x != offset.toInt()) viewPosition = Point(offset.toInt(), 0)
+    }
+
+    private fun refreshTransition(now: Long) {
+        if (outgoingRow == null) return
+        if (now - transitionStarted >= transitionNanos) finishTransition() else repaint()
     }
 
     private fun tickStepped(now: Long, pointerInside: Boolean, focused: Boolean) {

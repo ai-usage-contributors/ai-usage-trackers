@@ -22,24 +22,33 @@ class ProviderUsageCollector(private val database: UsageDatabase) {
             if (Files.isRegularFile(root)) {
                 files.add(root.toRealPath()); continue
             }
-            Files.walkFileTree(root, object : SimpleFileVisitor<Path>() {
-                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    checkCancelled(); return FileVisitResult.CONTINUE
-                }
-
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    checkCancelled()
-                    if (file.fileName.toString().endsWith(".jsonl") && attrs.isRegularFile) files.add(file.toRealPath())
-                    return FileVisitResult.CONTINUE
-                }
-
-                override fun visitFileFailed(file: Path, exc: java.io.IOException): FileVisitResult {
-                    issues += "Source discovery incomplete"; return FileVisitResult.CONTINUE
-                }
-            })
+            walkSource(root, files, issues, checkCancelled)
         }
         files.forEach { importFile(it, profile, issues, checkCancelled) }
         database.recordScan(roots.size, files.size, issues, completionTime())
+    }
+
+    private fun walkSource(
+        root: Path,
+        files: MutableSet<Path>,
+        issues: MutableSet<String>,
+        checkCancelled: () -> Unit,
+    ) {
+        Files.walkFileTree(root, object : SimpleFileVisitor<Path>() {
+            override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                checkCancelled(); return FileVisitResult.CONTINUE
+            }
+
+            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                checkCancelled()
+                if (file.fileName.toString().endsWith(".jsonl") && attrs.isRegularFile) files.add(file.toRealPath())
+                return FileVisitResult.CONTINUE
+            }
+
+            override fun visitFileFailed(file: Path, exc: java.io.IOException): FileVisitResult {
+                issues += "Source discovery incomplete"; return FileVisitResult.CONTINUE
+            }
+        })
     }
 
     private fun importFile(

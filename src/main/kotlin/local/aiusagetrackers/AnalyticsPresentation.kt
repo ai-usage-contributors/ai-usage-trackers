@@ -20,6 +20,14 @@ object AnalyticsPresentation {
     ): String = buildString {
         val format = DisplayFormats(preferences)
         snapshot.analytics.lastRequest?.usage?.evidence?.let { append("• Token evidence: $it\n") }
+        appendOtherPools(snapshot, options)
+        appendRequest(snapshot, format, zone)
+        for (duration in listOf(10080, 300)) appendWindow(snapshot, options, format, zone, duration)
+        snapshot.analytics.operationalIssues.sorted().forEach { append("• $it\n") }
+    }
+
+
+    private fun StringBuilder.appendOtherPools(snapshot: UsageSnapshot, options: AnalyticsDisplayOptions) {
         snapshot.analytics.quotaObservations.filter { it.usage.windowMinutes == 0 }.forEach { observation ->
             val reading = QuotaSelection(observation, snapshot.collection.lastCompleted, false, 0, snapshot.evaluatedAt)
             append(
@@ -31,11 +39,7 @@ object AnalyticsPresentation {
             )
             append("• Boundary policy: unverified; ${reading.warning(false) ?: "provider observation available"}\n")
         }
-        appendRequest(snapshot, format, zone)
-        for (duration in listOf(10080, 300)) appendWindow(snapshot, options, format, zone, duration)
-        snapshot.analytics.operationalIssues.sorted().forEach { append("• $it\n") }
     }
-
 
     private fun StringBuilder.appendRequest(snapshot: UsageSnapshot, format: DisplayFormats, zone: ZoneId) {
         val request = snapshot.analytics.lastRequest

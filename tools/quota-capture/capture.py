@@ -11,6 +11,11 @@ import sys
 import tempfile
 
 MAX_BYTES = 1024 * 1024
+UTC_OFFSET = "+00:00"
+
+
+def utc_stamp(value):
+    return value.astimezone(datetime.timezone.utc).isoformat().replace(UTC_OFFSET, "Z")
 
 
 def numeric(value, name, maximum=None, integer=False):
@@ -30,62 +35,70 @@ def identity(value):
 
 
 def quota_fields(value, vendor):
-    result = {}
     if vendor == "claude":
-        for field in ("used_percentage", "resets_at"):
-            if field in value and value[field] is not None:
-                result[field] = numeric(value[field], field, 100 if field == "used_percentage" else 253402300799,
-                                        integer=field == "resets_at")
+        fields = (("used_percentage", 100, False), ("resets_at", 253402300799, True))
     else:
-        for field in ("remaining_fraction", "remaining_amount", "reset_in_seconds"):
-            if field in value and value[field] is not None:
-                result[field] = numeric(value[field], field, 1 if field == "remaining_fraction" else 9223372036854775807)
-        if value.get("disabled") is not None:
-            if not isinstance(value["disabled"], bool):
-                raise ValueError("disabled must be boolean")
-            result["disabled"] = value["disabled"]
-        if value.get("reset_time") is not None:
-            text = value["reset_time"]
-            if not isinstance(text, str) or len(text) > 64:
-                raise ValueError("reset_time must be a timestamp")
-            parsed = datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                raise ValueError("reset_time requires a time zone")
-            result["reset_time"] = parsed.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+        fields = (("remaining_fraction", 1, False), ("remaining_amount", 9223372036854775807, False),
+                  ("reset_in_seconds", 9223372036854775807, False))
+    result = {field: numeric(value[field], field, maximum, integer=integer)
+              for field, maximum, integer in fields if value.get(field) is not None}
+    if vendor != "claude":
+        copy_quota_status(value, result)
     return result
+
+
+def copy_quota_status(value, result):
+    disabled = value.get("disabled")
+    if disabled is not None:
+        if not isinstance(disabled, bool):
+            raise ValueError("disabled must be boolean")
+        result["disabled"] = disabled
+    text = value.get("reset_time")
+    if text is not None:
+        if not isinstance(text, str) or len(text) > 64:
+            raise ValueError("reset_time must be a timestamp")
+        parsed = datetime.datetime.fromisoformat(text.replace("Z", UTC_OFFSET))
+        if parsed.tzinfo is None:
+            raise ValueError("reset_time requires a time zone")
+        result["reset_time"] = utc_stamp(parsed)
 
 
 def sanitize(vendor, report):
     if not isinstance(report, dict):
         raise ValueError("Expected a JSON object")
     if vendor == "claude":
-        limits = report.get("rate_limits")
-        if not isinstance(limits, dict):
-            return None
-        cleaned = {}
-        for key in ("five_hour", "seven_day"):
-            value = limits.get(key)
-            if isinstance(value, dict):
-                cleaned[key] = quota_fields(value, vendor)
-        return {"rate_limits": cleaned} if cleaned else None
+        return sanitize_claude(report)
     if report.get("event") == "step_update":
-        step = report.get("step_update", {})
-        if not isinstance(step, dict):
-            raise ValueError("Expected a step object")
-        if step.get("state") != "DONE" or not isinstance(step.get("usage"), dict):
-            return None
-        clean_step = {"conversation_id": identity(step.get("conversation_id")),
-                      "step_index": numeric(step.get("step_index"), "step_index", 9223372036854775807, integer=True),
-                      "state": "DONE"}
-        clean_step["usage"] = {field: numeric(step["usage"][field], field, 9223372036854775807, integer=True) for field in
-                              ("input_tokens", "output_tokens", "thinking_tokens", "cache_read_tokens", "total_tokens")
-                              if field in step["usage"]}
-        return {"event": "step_update", "step_update": clean_step}
+        return sanitize_step(report)
     quotas = report.get("quota")
     if not isinstance(quotas, dict):
         return None
     return {"quota": {identity(key): quota_fields(value, vendor)
                       for key, value in quotas.items() if isinstance(value, dict)}}
+
+
+def sanitize_claude(report):
+    limits = report.get("rate_limits")
+    if not isinstance(limits, dict):
+        return None
+    cleaned = {key: quota_fields(limits[key], "claude") for key in ("five_hour", "seven_day")
+               if isinstance(limits.get(key), dict)}
+    return {"rate_limits": cleaned} if cleaned else None
+
+
+def sanitize_step(report):
+    step = report.get("step_update", {})
+    if not isinstance(step, dict):
+        raise ValueError("Expected a step object")
+    if step.get("state") != "DONE" or not isinstance(step.get("usage"), dict):
+        return None
+    clean_step = {"conversation_id": identity(step.get("conversation_id")),
+                  "step_index": numeric(step.get("step_index"), "step_index", 9223372036854775807, integer=True),
+                  "state": "DONE"}
+    clean_step["usage"] = {field: numeric(step["usage"][field], field, 9223372036854775807, integer=True) for field in
+                          ("input_tokens", "output_tokens", "thinking_tokens", "cache_read_tokens", "total_tokens")
+                          if field in step["usage"]}
+    return {"event": "step_update", "step_update": clean_step}
 
 
 def capture(vendor, directory, report, now=None):
@@ -96,7 +109,7 @@ def capture(vendor, directory, report, now=None):
     # their ordering; the ledger coalesces consecutive equal values without
     # confusing a later return to an earlier value with a cached repetition.
     canonical = json.dumps(cleaned, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    captured_at = now or datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    captured_at = now or utc_stamp(datetime.datetime.now(datetime.timezone.utc))
     acquisition = "" if cleaned.get("event") == "step_update" else captured_at
     digest = hashlib.sha256((vendor + canonical + acquisition).encode("utf-8")).hexdigest()
     target = pathlib.Path(directory) / (digest + ".jsonl")

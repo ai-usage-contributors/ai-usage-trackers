@@ -111,16 +111,18 @@ class UsageInfoPanel(
         savingPage = index
         refreshAcknowledgement()
         save(if (index == 1) "warnings" else "integrity", issues) { saved ->
-            if (saved && captured === snapshot) {
-                val area = otherTexts[index - 1]
-                area.text = acknowledgedText(area.text)
-                captured = captured?.let {
-                    if (index == 1) it.copy(warningIssues = emptySet()) else it.copy(integrityFindings = emptySet())
-                }
-            }
+            if (saved && captured === snapshot) showAcknowledgedPage(index)
             savingPage = null
             refreshAcknowledgement()
             if (!saved) acknowledgementError()
+        }
+    }
+
+    private fun showAcknowledgedPage(index: Int) {
+        val area = otherTexts[index - 1]
+        area.text = acknowledgedText(area.text)
+        captured = captured?.let {
+            if (index == 1) it.copy(warningIssues = emptySet()) else it.copy(integrityFindings = emptySet())
         }
     }
 

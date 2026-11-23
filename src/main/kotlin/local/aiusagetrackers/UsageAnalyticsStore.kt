@@ -93,22 +93,7 @@ internal class UsageAnalyticsStore(private val connection: Connection) {
         if (cachedRevision == revision && at != null && now >= at && (future == null || now < future)) {
             cached?.let { return it }
         }
-        val requests = mutableListOf<RequestReading>()
-        connection.prepareStatement(
-            """
-            SELECT seconds,nanos,data FROM analytics
-            WHERE kind='request' AND conflict=0 AND (seconds,nanos)<=(?,?)
-            ORDER BY seconds DESC,nanos DESC,CASE WHEN key LIKE 'response:%' THEN 0 ELSE 1 END,session_key,key LIMIT 2
-        """.trimIndent()
-        ).use {
-            it.setLong(1, now.epochSecond); it.setInt(2, now.nano)
-            it.executeQuery().use { rows ->
-                while (rows.next()) requests += RequestReading(
-                    Instant.ofEpochSecond(rows.getLong(1), rows.getLong(2)),
-                    gson.fromJson(rows.getString(3), RequestUsage::class.java)
-                )
-            }
-        }
+        val requests = latestRequests(now)
         val latestActivity = latestActivity(now)
         val quotas = quotaObservations(now)
         val conflicts = connection.createStatement().use {
@@ -134,6 +119,26 @@ internal class UsageAnalyticsStore(private val connection: Connection) {
                 }
         cached = result; cachedRevision = revision; cachedAt = now
         return result
+    }
+
+    private fun latestRequests(now: Instant): List<RequestReading> {
+        val requests = mutableListOf<RequestReading>()
+        connection.prepareStatement(
+            """
+            SELECT seconds,nanos,data FROM analytics
+            WHERE kind='request' AND conflict=0 AND (seconds,nanos)<=(?,?)
+            ORDER BY seconds DESC,nanos DESC,CASE WHEN key LIKE 'response:%' THEN 0 ELSE 1 END,session_key,key LIMIT 2
+        """.trimIndent()
+        ).use {
+            it.setLong(1, now.epochSecond); it.setInt(2, now.nano)
+            it.executeQuery().use { rows ->
+                while (rows.next()) requests += RequestReading(
+                    Instant.ofEpochSecond(rows.getLong(1), rows.getLong(2)),
+                    gson.fromJson(rows.getString(3), RequestUsage::class.java)
+                )
+            }
+        }
+        return requests
     }
 
     private fun latestActivity(now: Instant): Instant? {

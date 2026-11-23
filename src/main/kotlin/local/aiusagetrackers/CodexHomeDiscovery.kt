@@ -23,16 +23,7 @@ class CodexHomeDiscovery(
         }
         env["CODEX_HOME"]?.takeIf { it.isNotBlank() }?.let(::add)
         extras.filter { it.isNotBlank() }.forEach(::add)
-        val roots = mutableSetOf<Path>()
-        val platform = os.lowercase(Locale.ROOT)
-        if (platform.contains("win")) {
-            listOf("LOCALAPPDATA", "APPDATA").mapNotNull { env[it] }
-                .forEach { roots.add(Path.of(it).resolve("JetBrains")) }
-            roots.add(home.resolve("AppData/Local/JetBrains"))
-            roots.add(home.resolve("AppData/Roaming/JetBrains"))
-        } else if (platform.contains("mac")) {
-            roots.add(home.resolve("Library/Caches/JetBrains"))
-        }
+        val roots = ideRoots()
         // Unverified Linux IDE cache layouts are deliberately left to extra homes.
         for (root in roots) {
             if (Files.notExists(root)) continue
@@ -46,6 +37,20 @@ class CodexHomeDiscovery(
         }
         val homes = accessibleHomes(candidates, extras, issues)
         return Discovery(homes, issues)
+    }
+
+    private fun ideRoots(): Set<Path> {
+        val roots = mutableSetOf<Path>()
+        val platform = os.lowercase(Locale.ROOT)
+        if (platform.contains("win")) {
+            listOf("LOCALAPPDATA", "APPDATA").mapNotNull { env[it] }
+                .forEach { roots.add(Path.of(it).resolve("JetBrains")) }
+            roots.add(home.resolve("AppData/Local/JetBrains"))
+            roots.add(home.resolve("AppData/Roaming/JetBrains"))
+        } else if (platform.contains("mac")) {
+            roots.add(home.resolve("Library/Caches/JetBrains"))
+        }
+        return roots
     }
 
     private fun accessibleHomes(candidates: Set<Path>, extras: List<String>, issues: MutableSet<String>): Set<Path> {

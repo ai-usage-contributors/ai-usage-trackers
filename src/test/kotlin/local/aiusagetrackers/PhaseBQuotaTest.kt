@@ -5,6 +5,7 @@ import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import java.nio.file.Files
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -79,6 +80,81 @@ class PhaseBQuotaTest {
                     AnalyticsDisplayOptions(quotaScope = "missing")
                 ).total
             )
+        }
+    }
+
+    @Test
+    fun optedInDailyTotalRestartsAtWeeklyResetAndResumesCalendarBoundaries() {
+        val home = temp.newFolder().toPath()
+        val source = Files.createDirectories(home.resolve("sessions")).resolve("day.jsonl")
+        Files.writeString(
+            source, listOf(
+                TestLogs.meta(),
+                TestLogs.event(100, end.minusNanos(1).toString()),
+                TestLogs.event(150, end.toString()),
+                TestLogs.event(175, end.plusSeconds(1).toString()),
+                quota()
+            ).joinToString("\n")
+        )
+        val tracker = TrackerDefinition(resetDailyAtWeeklyReset = true)
+        val midnight = Instant.parse("2026-11-04T00:00:00Z")
+        UsageDatabase(home.resolve("usage.sqlite")).use { database ->
+            CodexUsageCollector(database).collect(Discovery(setOf(home), emptySet()), end.plusSeconds(1))
+            val before = database.evaluate(tracker, end.minusNanos(1), ZoneOffset.UTC)
+            assertEquals(100L, before.total)
+            assertEquals(midnight, before.period.intervals.single().start)
+            val exact = database.evaluate(tracker, end, ZoneOffset.UTC)
+            assertEquals(50L, exact.total)
+            assertEquals(end, exact.period.intervals.single().start)
+            assertTrue(exact.issues.any { "scheduled weekly reset" in it })
+            assertEquals(75L, database.evaluate(tracker, end.plusSeconds(1), ZoneOffset.UTC).total)
+            assertEquals(150L, database.evaluate(tracker.copy(resetDailyAtWeeklyReset = false), end, ZoneOffset.UTC).total)
+
+            val nextMidnight = midnight.plusSeconds(86400)
+            val nextDay = database.evaluate(tracker, nextMidnight, ZoneOffset.UTC)
+            assertEquals(0L, nextDay.total)
+            assertEquals(nextMidnight, nextDay.period.intervals.single().start)
+            val localMidnight = database.evaluate(tracker, end, ZoneOffset.ofHours(10))
+            assertEquals(end, localMidnight.period.intervals.single().start)
+            assertTrue(localMidnight.issues.isEmpty())
+
+            val pinned = AnalyticsDisplayOptions(quotaScope = "missing")
+            val fallback = database.evaluate(tracker, end, ZoneOffset.UTC, pinned)
+            assertEquals(150L, fallback.total)
+            assertEquals(midnight, fallback.period.intervals.single().start)
+            assertTrue(fallback.issues.any { "no weekly reset" in it })
+            val bound = database.evaluate(tracker.copy(quotaPoolId = "codex"), end, ZoneOffset.UTC, pinned)
+            assertEquals(50L, bound.total)
+            val missing = database.evaluate(tracker.copy(quotaPoolId = "missing"), end, ZoneOffset.UTC)
+            assertEquals(150L, missing.total)
+            assertTrue(missing.issues.any { "no weekly reset" in it })
+        }
+    }
+
+    @Test
+    fun resetOnDstSundayUsesAbsoluteTimeWithoutChangingWeekdaySelection() {
+        val home = temp.newFolder().toPath()
+        val source = Files.createDirectories(home.resolve("sessions")).resolve("dst.jsonl")
+        val zone = ZoneId.of("Europe/Budapest")
+        val reset = Instant.parse("2026-10-25T01:30:00Z")
+        Files.writeString(
+            source, listOf(
+                TestLogs.meta(),
+                TestLogs.event(30, "2026-10-23T12:00:00Z"),
+                TestLogs.event(70, "2026-10-25T00:30:00Z"),
+                TestLogs.event(90, reset.toString()),
+                quota(reset.minusSeconds(3600), reset = reset)
+            ).joinToString("\n")
+        )
+        UsageDatabase(home.resolve("usage.sqlite")).use { database ->
+            CodexUsageCollector(database).collect(Discovery(setOf(home), emptySet()), reset)
+            val tracker = TrackerDefinition(resetDailyAtWeeklyReset = true)
+            val daily = database.evaluate(tracker, reset, zone)
+            assertEquals(20L, daily.total)
+            assertEquals(reset, daily.period.intervals.single().start)
+            val weekdays = database.evaluate(tracker.copy(selection = DaySelection.WORKING), reset, zone)
+            assertEquals(30L, weekdays.total)
+            assertEquals(Instant.parse("2026-10-22T22:00:00Z"), weekdays.period.intervals.single().start)
         }
     }
 

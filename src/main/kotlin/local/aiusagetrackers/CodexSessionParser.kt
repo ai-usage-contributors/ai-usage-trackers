@@ -59,19 +59,8 @@ class CodexSessionParser {
             while (true) {
                 checkCancelled()
                 val line = boundedLine(reader, checkCancelled) ?: break
-                if (line.isBlank()) continue
-                val row = try {
-                    JsonParser.parseString(line).asJsonObject
-                } catch (_: RuntimeException) {
-                    issues += "Malformed or incomplete log records; retried on refresh"
-                    continue
-                }
-                val observations = try {
-                    analytics.read(row)
-                } catch (_: RuntimeException) {
-                    issues += "Invalid request or quota metadata excluded"
-                    emptyList()
-                }
+                val row = parseRow(line, issues) ?: continue
+                val observations = readObservations(analytics, row, issues)
                 // Database errors and cancellation from either callback must propagate.
                 observations.forEach(onObservation)
                 val increment = state.increment(row)
@@ -84,6 +73,27 @@ class CodexSessionParser {
             issues += "Forked session history excluded; coverage incomplete"
         }
         return Summary(state.id, HexFormat.of().formatHex(digest.digest()), issues, state.latest, state.fork)
+    }
+
+    private fun parseRow(line: String, issues: MutableSet<String>): JsonObject? {
+        if (line.isBlank()) return null
+        return try {
+            JsonParser.parseString(line).asJsonObject
+        } catch (_: RuntimeException) {
+            issues += "Malformed or incomplete log records; retried on refresh"
+            null
+        }
+    }
+
+    private fun readObservations(
+        analytics: CodexAnalyticsParser,
+        row: JsonObject,
+        issues: MutableSet<String>,
+    ): List<AnalyticsRecord> = try {
+        analytics.read(row)
+    } catch (_: RuntimeException) {
+        issues += "Invalid request or quota metadata excluded"
+        emptyList()
     }
 
     private inner class StreamState(private val issues: MutableSet<String>) {
@@ -185,15 +195,15 @@ class CodexSessionParser {
                 checkCancelled(); readSinceCheck = 0
             }
             val c = reader.read()
-            if (c == -1 || c == '\n'.code) {
-                return when {
-                    oversized -> "!oversized"
-                    c == -1 && line.isEmpty() -> null
-                    else -> line.toString()
-                }
-            }
+            if (c == -1 || c == '\n'.code) return completedLine(line, oversized, c == -1)
             if (line.length < MAX_LINE) line.append(c.toChar()) else oversized = true
         }
+    }
+
+    private fun completedLine(line: StringBuilder, oversized: Boolean, endOfFile: Boolean): String? = when {
+        oversized -> "!oversized"
+        endOfFile && line.isEmpty() -> null
+        else -> line.toString()
     }
 
     companion object {

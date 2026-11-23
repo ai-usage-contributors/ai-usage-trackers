@@ -41,6 +41,7 @@ def envelope(vendor, at, report):
 
 
 def quota_rows(vendor, quotas, now):
+    make_row = {"codex": codex_quota_row, "claude": claude_quota_row}.get(vendor, antigravity_quota_row)
     rows = []
     for pool, values in quotas.items():
         if not values:
@@ -57,38 +58,45 @@ def quota_rows(vendor, quotas, now):
             number(used, "used_percent", maximum=100)
         reset_at = None if reset is None else now + timedelta(
             minutes=number(reset, "reset_in_minutes", minimum=-10**8, maximum=10**8))
-        if vendor == "codex":
-            if pool not in ("weekly", "five_hour"):
-                raise ValueError("Codex pools must be weekly or five_hour")
-            window = {"window_minutes": 10080 if pool == "weekly" else 300}
-            if used is not None:
-                window["used_percent"] = used
-            if reset_at is not None:
-                window["resets_at"] = int(reset_at.timestamp())
-            slot = "secondary" if pool == "weekly" else "primary"
-            rows.append({"type": "event_msg", "timestamp": stamp(at), "payload": {
-                "type": "token_count", "info": None,
-                "rate_limits": {"limit_id": "synthetic", slot: window}}})
-        elif vendor == "claude":
-            if pool not in ("weekly", "five_hour"):
-                raise ValueError("Claude pools must be weekly or five_hour")
-            window = {}
-            if used is not None:
-                window["used_percentage"] = used
-            if reset_at is not None:
-                window["resets_at"] = int(reset_at.timestamp())
-            slot = "seven_day" if pool == "weekly" else "five_hour"
-            rows.append(envelope(vendor, at, {"rate_limits": {slot: window}}))
-        else:
-            if not pool or len(pool) > 512 or any(ord(char) < 32 for char in pool):
-                raise ValueError("Antigravity pool IDs must be 1-512 printable characters")
-            window = {}
-            if used is not None:
-                window["remaining_fraction"] = (100 - used) / 100
-            if reset_at is not None:
-                window["reset_time"] = stamp(reset_at)
-            rows.append(envelope(vendor, at, {"quota": {pool: window}}))
+        rows.append(make_row(vendor, pool, used, reset_at, at))
     return rows
+
+
+def codex_quota_row(_vendor, pool, used, reset_at, at):
+    if pool not in ("weekly", "five_hour"):
+        raise ValueError("Codex pools must be weekly or five_hour")
+    window = {"window_minutes": 10080 if pool == "weekly" else 300}
+    if used is not None:
+        window["used_percent"] = used
+    if reset_at is not None:
+        window["resets_at"] = int(reset_at.timestamp())
+    slot = "secondary" if pool == "weekly" else "primary"
+    return {"type": "event_msg", "timestamp": stamp(at), "payload": {
+        "type": "token_count", "info": None,
+        "rate_limits": {"limit_id": "synthetic", slot: window}}}
+
+
+def claude_quota_row(vendor, pool, used, reset_at, at):
+    if pool not in ("weekly", "five_hour"):
+        raise ValueError("Claude pools must be weekly or five_hour")
+    window = {}
+    if used is not None:
+        window["used_percentage"] = used
+    if reset_at is not None:
+        window["resets_at"] = int(reset_at.timestamp())
+    slot = "seven_day" if pool == "weekly" else "five_hour"
+    return envelope(vendor, at, {"rate_limits": {slot: window}})
+
+
+def antigravity_quota_row(vendor, pool, used, reset_at, at):
+    if not pool or len(pool) > 512 or any(ord(char) < 32 for char in pool):
+        raise ValueError("Antigravity pool IDs must be 1-512 printable characters")
+    window = {}
+    if used is not None:
+        window["remaining_fraction"] = (100 - used) / 100
+    if reset_at is not None:
+        window["reset_time"] = stamp(reset_at)
+    return envelope(vendor, at, {"quota": {pool: window}})
 
 
 def generate(config, now, dataset_id):
@@ -99,56 +107,68 @@ def generate(config, now, dataset_id):
         raise ValueError("Unknown top-level config field")
     result = {}
     for vendor in VENDORS:
-        settings = config[vendor]
-        if set(settings) - {"requests", "quotas"}:
-            raise ValueError(f"Unknown setting for {vendor}")
-        requests = settings.get("requests", [])
-        if len(requests) > 1000:
-            raise ValueError("Use at most 1000 requests per vendor")
-        rows = []
-        cumulative = dict.fromkeys(("input_tokens", "output_tokens", "cached_input_tokens",
-                                    "reasoning_output_tokens", "total_tokens"), 0)
-        if vendor == "codex":
-            rows.append({"type": "session_meta", "timestamp": stamp(now),
-                         "payload": {"id": dataset_id}})
-        # Codex cumulative counters must advance from the oldest request to newest.
-        requests = sorted(requests, key=lambda row: number(
-            row["age_minutes"], "request age_minutes", maximum=10**8), reverse=True)
-        for index, request in enumerate(requests):
-            if set(request) - {"age_minutes", *cumulative}:
-                raise ValueError(f"Unknown request field for {vendor}")
-            if "total_tokens" in request:
-                raise ValueError("total_tokens is calculated; set input_tokens and output_tokens")
-            at = now - timedelta(minutes=request["age_minutes"])
-            usage = counts(request)
-            identity = f"{dataset_id}-{vendor}-{index}"
-            if vendor == "codex":
-                cumulative = {key: cumulative[key] + usage[key] for key in cumulative}
-                rows.extend([
-                    {"type": "token_usage_record", "timestamp": stamp(at), "payload": {
-                        "response_id": identity, "usage": usage,
-                        "thread_token_usage": cumulative}},
-                    {"type": "event_msg", "timestamp": stamp(at), "payload": {
-                        "type": "token_count", "info": {
-                            "total_token_usage": cumulative, "last_token_usage": usage}}}])
-            elif vendor == "claude":
-                rows.append({"type": "assistant", "timestamp": stamp(at),
-                             "sessionId": dataset_id, "message": {"id": identity, "usage": {
-                                 "input_tokens": usage["input_tokens"] - usage["cached_input_tokens"],
-                                 "cache_read_input_tokens": usage["cached_input_tokens"],
-                                 "output_tokens": usage["output_tokens"]}}})
-            else:
-                rows.append(envelope(vendor, at, {"event": "step_update", "step_update": {
-                    "conversation_id": dataset_id, "step_index": index, "state": "DONE",
-                    "usage": {"input_tokens": usage["input_tokens"],
-                              "output_tokens": usage["output_tokens"],
-                              "total_tokens": usage["total_tokens"],
-                              "cache_read_tokens": usage["cached_input_tokens"],
-                              "thinking_tokens": usage["reasoning_output_tokens"]}}}))
-        rows.extend(quota_rows(vendor, settings.get("quotas", {}), now))
+        rows = vendor_rows(vendor, config[vendor], now, dataset_id)
         path = "codex/sessions/rollout-demo.jsonl" if vendor == "codex" else f"{vendor}/demo.jsonl"
         result[path] = "".join(json.dumps(row, separators=(",", ":")) + "\n" for row in rows)
     return result
+
+
+def vendor_rows(vendor, settings, now, dataset_id):
+    if set(settings) - {"requests", "quotas"}:
+        raise ValueError(f"Unknown setting for {vendor}")
+    rows = request_rows(vendor, settings.get("requests", []), now, dataset_id)
+    rows.extend(quota_rows(vendor, settings.get("quotas", {}), now))
+    return rows
+
+
+def request_rows(vendor, requests, now, dataset_id):
+    if len(requests) > 1000:
+        raise ValueError("Use at most 1000 requests per vendor")
+    rows = []
+    cumulative = dict.fromkeys(("input_tokens", "output_tokens", "cached_input_tokens",
+                                "reasoning_output_tokens", "total_tokens"), 0)
+    if vendor == "codex":
+        rows.append({"type": "session_meta", "timestamp": stamp(now),
+                     "payload": {"id": dataset_id}})
+    # Codex cumulative counters must advance from the oldest request to newest.
+    requests = sorted(requests, key=lambda row: number(
+        row["age_minutes"], "request age_minutes", maximum=10**8), reverse=True)
+    for index, request in enumerate(requests):
+        usage = request_usage(vendor, request, cumulative)
+        at = now - timedelta(minutes=request["age_minutes"])
+        identity = f"{dataset_id}-{vendor}-{index}"
+        if vendor == "codex":
+            cumulative = {key: cumulative[key] + usage[key] for key in cumulative}
+            rows.extend([
+                {"type": "token_usage_record", "timestamp": stamp(at), "payload": {
+                    "response_id": identity, "usage": usage,
+                    "thread_token_usage": cumulative}},
+                {"type": "event_msg", "timestamp": stamp(at), "payload": {
+                    "type": "token_count", "info": {
+                        "total_token_usage": cumulative, "last_token_usage": usage}}}])
+        elif vendor == "claude":
+            rows.append({"type": "assistant", "timestamp": stamp(at),
+                         "sessionId": dataset_id, "message": {"id": identity, "usage": {
+                             "input_tokens": usage["input_tokens"] - usage["cached_input_tokens"],
+                             "cache_read_input_tokens": usage["cached_input_tokens"],
+                             "output_tokens": usage["output_tokens"]}}})
+        else:
+            rows.append(envelope(vendor, at, {"event": "step_update", "step_update": {
+                "conversation_id": dataset_id, "step_index": index, "state": "DONE",
+                "usage": {"input_tokens": usage["input_tokens"],
+                          "output_tokens": usage["output_tokens"],
+                          "total_tokens": usage["total_tokens"],
+                          "cache_read_tokens": usage["cached_input_tokens"],
+                          "thinking_tokens": usage["reasoning_output_tokens"]}}}))
+    return rows
+
+
+def request_usage(vendor, request, cumulative):
+    if set(request) - {"age_minutes", *cumulative}:
+        raise ValueError(f"Unknown request field for {vendor}")
+    if "total_tokens" in request:
+        raise ValueError("total_tokens is calculated; set input_tokens and output_tokens")
+    return counts(request)
 
 
 def write_dataset(output, files):

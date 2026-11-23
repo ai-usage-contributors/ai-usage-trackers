@@ -5,6 +5,16 @@ import javax.swing.*
 import kotlin.test.*
 
 class ConditionalSettingsTest {
+    @Test fun dailyResetOnlyAppliesToOneCurrentAutomaticCalendarDay() {
+        val day = TrackerDefinition(resetDailyAtWeeklyReset = true)
+        assertTrue(day.supportsDailyWeeklyReset())
+        assertFalse(day.copy(amount = 2).supportsDailyWeeklyReset())
+        assertFalse(day.copy(includeCurrent = false).supportsDailyWeeklyReset())
+        assertFalse(day.copy(unit = SpanUnit.WEEK).supportsDailyWeeklyReset())
+        assertFalse(day.copy(mode = PeriodMode.ELAPSED).supportsDailyWeeklyReset())
+        assertFalse(day.copy(startTime = "08:00").supportsDailyWeeklyReset())
+    }
+
     @Test fun providerWeeksOnlyExposeApplicablePeriodControls() {
         assertEquals(setOf("period", "zone"), trackerSettingVisibility(PeriodMode.PROVIDER_WEEK, SpanUnit.WEEK, EndAnchor.NOW, false))
         assertEquals(setOf("period", "zone", "amount", "unit", "days", "current"),

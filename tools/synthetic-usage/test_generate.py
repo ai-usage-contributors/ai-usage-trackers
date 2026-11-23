@@ -55,8 +55,9 @@ class GeneratorTests(unittest.TestCase):
         self.config["codex"]["quotas"]["weekly"]["used_percent"] = float("nan")
         with self.assertRaises(ValueError):
             generator.generate(self.config, NOW, "invalid")
+        naive_now = NOW.replace(tzinfo=None)
         with self.assertRaises(ValueError):
-            generator.generate({}, NOW.replace(tzinfo=None), "invalid")
+            generator.generate({}, naive_now, "invalid")
 
     def test_empty_inputs_and_omitted_quota_windows_are_supported(self):
         for vendor in generator.VENDORS:

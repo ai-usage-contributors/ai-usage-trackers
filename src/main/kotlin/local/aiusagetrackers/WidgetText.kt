@@ -28,7 +28,8 @@ object WidgetText {
         options: AnalyticsDisplayOptions = AnalyticsDisplayOptions()
     ): List<StatusValue> = buildList {
         if (snapshot.agreementRequired) {
-            add(StatusValue("state", "", "agreement required", state = StatusValueState.UNAVAILABLE)); return@buildList
+            add(StatusValue("state", "", "agreement required", state = StatusValueState.UNAVAILABLE))
+            return@buildList
         }
         if (options.showReportedPools) addReportedPools(snapshot, options)
         if (snapshot.loading) {
@@ -58,23 +59,29 @@ object WidgetText {
                 )
             }
         }
-        if (showLastRequest) {
-            val total = snapshot.analytics.lastRequest?.usage?.counters?.total
-            add(
-                quotaMetric.apply(
-                    StatusValue(
-                        "request",
-                        options.lastRequestLabel,
-                        total?.let(::compact) ?: "unavailable",
-                        total?.toBigDecimal(),
-                        if (total == null) StatusValueState.UNAVAILABLE else StatusValueState.AVAILABLE,
-                        options.lastRequestStyle
-                    ), preferences.allTokenPercentUsed || options.lastRequestPercentUsed
-                )
-            )
-        }
+        if (showLastRequest) add(lastRequestValue(snapshot, preferences, options, quotaMetric))
         for (duration in listOf(10080, 300)) addWindow(snapshot, options, duration)
     }.map { styledValue(it, preferences, options) }
+
+    private fun lastRequestValue(
+        snapshot: UsageSnapshot,
+        preferences: DisplayPreferences,
+        options: AnalyticsDisplayOptions,
+        quotaMetric: QuotaMetricPresentation,
+    ): StatusValue {
+        val total = snapshot.analytics.lastRequest?.usage?.counters?.total
+        return quotaMetric.apply(
+            StatusValue(
+                "request",
+                options.lastRequestLabel,
+                total?.let(::compact) ?: "unavailable",
+                total?.toBigDecimal(),
+                if (total == null) StatusValueState.UNAVAILABLE else StatusValueState.AVAILABLE,
+                options.lastRequestStyle
+            ),
+            preferences.allTokenPercentUsed || options.lastRequestPercentUsed
+        )
+    }
 
 
     private fun MutableList<StatusValue>.addReportedPools(snapshot: UsageSnapshot, options: AnalyticsDisplayOptions) {
@@ -130,11 +137,10 @@ object WidgetText {
         if (!shown || !QuotaEligibility.metric(options.capabilities(), duration, reset = false).enabled) return
         val percent = reading.percentage(options.quotaPercentMode)
         val estimate = budgetEstimate(snapshot, reading)
-        val amount =
-            if (weekly && options.estimateBudget && QuotaEligibility.budget(options.capabilities())) estimate?.amount(
-                options.quotaPercentMode
-            )
-                ?.let { "|~${compactDecimal(it)}" } ?: "|estimate unavailable" else ""
+        val showEstimate = weekly && options.estimateBudget && QuotaEligibility.budget(options.capabilities())
+        val amount = if (showEstimate) {
+            estimate?.amount(options.quotaPercentMode)?.let { "|~${compactDecimal(it)}" } ?: "|estimate unavailable"
+        } else ""
         add(
             StatusValue(
                 "quota:$duration",
@@ -146,7 +152,7 @@ object WidgetText {
                 listOfNotNull(reading.warning(false), estimate?.explanation).joinToString(" "),
                 warnings = listOfNotNull(
                     reading.warning(false),
-                    if (weekly && options.estimateBudget && QuotaEligibility.budget(options.capabilities()) && estimate == null) "Weekly token budget estimate unavailable" else null
+                    if (showEstimate && estimate == null) "Weekly token budget estimate unavailable" else null
                 )
             )
         )

@@ -1,5 +1,32 @@
 NATIVE UI TESTING RECORD - GIVEN / WHEN / THEN
-Maintained: 2026-11-23 | Next planned plugin version: 1.0.1
+Maintained: 2026-11-23 | Next planned plugin version: 1.1.0
+
+1.1.0 CANDIDATE — N11 DAILY USAGE AT WEEKLY RESET
+
+Given a single current calendar-day tracker and a synthetic weekly reset,
+when the option is enabled and the reset instant is reached, then its total
+and period details count from that instant through the current evaluation.
+Given the next local midnight or unavailable weekly reset data, when the
+tracker evaluates, then it uses the normal daily boundary. Details explain
+unavailable reset data.
+Given settings are open, when the user works with the checkbox by keyboard,
+applies or cancels edits, restarts, changes period type, or round-trips a v12
+export, then the setting is accessible and persists only as applied.
+
+Unsigned candidate: ai-usage-trackers-1.1.0.zip
+SHA256: 2862F37E93C32DE032735A0350B456FB8224F3D8EDC173C2190BAC5F5D24EF94
+Source: 9d6f336213405ab3702fe431ec96ac5809d8b188 plus the local 1.1.0
+feature and SonarQube cleanup changes.
+Owner observation (2026-11-23): the new setting works as expected. N11 is
+USER-PASS at the functional-report tier. The tested artifact hash, IDE build,
+OS/display/input details and fixture were not supplied. Controlled N11
+variants and the full native replay are NOT RUN.
+
+Signed candidate: ai-usage-trackers-1.1.0-signed.zip
+SHA256: 338FDFC3BB91CD68DA43F2978B9F13809882FEBFC790418804FF79C972DBCB3E
+ZIP Signer 0.1.45 verified the signature against the existing certificate
+(SHA256 88D9C478B7F5A1508AFF1D3CB340AB2C5DE4DF878C77A2C6D4C647DCDF632263).
+All five ZIP payload entries match the recorded unsigned candidate.
 
 1. HOW TO READ THIS RECORD
 

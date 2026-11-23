@@ -1,5 +1,20 @@
 NATIVE UI ACCEPTANCE PLAN
-CURRENT CANDIDATE: 1.0.1 (2026-11-23). All 47 scenarios (prior 46 plus N10)
+CURRENT CANDIDATE: 1.1.0. The owner reports the new setting works (N11
+USER-PASS). Controlled N11 variants and the full 48-scenario replay are
+NOT RUN. Include fresh install and upgrade from 1.0.1 under IDEA 2026.3.
+Earlier candidate observations below are historical.
+
+N11 - Daily usage at weekly reset: use a synthetic quota fixture and a
+one-day current calendar tracker. Verify the checkbox is off by default,
+has label/control tooltips and accessible descriptions, supports keyboard
+navigation and Apply/Cancel, and persists across restart. Verify the normal
+daily total before reset, the narrowed total and effective start at reset,
+and the usual boundary at the following midnight. Verify the normal total
+and explanatory detail when quota data is missing. Switch to an ineligible
+period and back, confirm that the choice persists, and round-trip a v12
+export. Record each variant and the exact candidate and environment.
+
+PREVIOUS CANDIDATE: 1.0.1 (2026-11-23). All 47 scenarios (prior 46 plus N10)
 require execution on this candidate; earlier results below are historical.
 Owner reports local verification of the fix (N10 USER-PASS); controlled variants
 and the remaining replay are NOT RUN. Agent native execution still requires

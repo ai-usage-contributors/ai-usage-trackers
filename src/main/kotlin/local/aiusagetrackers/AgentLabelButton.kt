@@ -38,24 +38,28 @@ internal open class AgentLabelButton(
 
     override fun processMouseEvent(e: MouseEvent) {
         if (SwingUtilities.isLeftMouseButton(e)) {
-            if (e.id == MouseEvent.MOUSE_PRESSED) {
-                pressed = e.locationOnScreen
-                dragged = false
-            } else if (e.id == MouseEvent.MOUSE_RELEASED) {
-                val origin = pressed
-                pressed = null
-                if (dragged && origin != null) {
-                    model.isArmed = false
-                    model.isPressed = false
-                    val delta = if (vertical()) origin.y - e.yOnScreen else origin.x - e.xOnScreen
-                    val steps = delta / JBUI.scale(30)
-                    if (steps != 0) navigate(steps)
-                    e.consume()
-                    return
+            when (e.id) {
+                MouseEvent.MOUSE_PRESSED -> {
+                    pressed = e.locationOnScreen
+                    dragged = false
                 }
+                MouseEvent.MOUSE_RELEASED -> if (finishDrag(e)) return
             }
         }
         super.processMouseEvent(e)
+    }
+
+    private fun finishDrag(e: MouseEvent): Boolean {
+        val origin = pressed
+        pressed = null
+        if (!dragged || origin == null) return false
+        model.isArmed = false
+        model.isPressed = false
+        val delta = if (vertical()) origin.y - e.yOnScreen else origin.x - e.xOnScreen
+        val steps = delta / JBUI.scale(30)
+        if (steps != 0) navigate(steps)
+        e.consume()
+        return true
     }
 
     override fun processMouseMotionEvent(e: MouseEvent) {

@@ -24,19 +24,25 @@ class CodexUsageCollector(private val database: UsageDatabase) {
             if (Files.notExists(directory)) continue
             discoverFiles(directory, files, issues, checkCancelled)
         }
-        for (file in files) {
-            checkCancelled()
-            try {
-                val attrs = Files.readAttributes(file, BasicFileAttributes::class.java)
-                if (!database.unchanged(file, attrs)) database.importFile(file, attrs, checkCancelled)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                integrityIssues += "A log import failed or changed during reading; previous history retained; retry pending"
-            }
-        }
+        files.forEach { importChangedFile(it, integrityIssues, checkCancelled) }
         checkCancelled()
         database.recordScan(discovery.homes.size, files.size, issues, completionTime(), integrityIssues)
+    }
+
+    private fun importChangedFile(
+        file: Path,
+        issues: MutableSet<String>,
+        checkCancelled: () -> Unit,
+    ) {
+        checkCancelled()
+        try {
+            val attrs = Files.readAttributes(file, BasicFileAttributes::class.java)
+            if (!database.unchanged(file, attrs)) database.importFile(file, attrs, checkCancelled)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            issues += "A log import failed or changed during reading; previous history retained; retry pending"
+        }
     }
 
     private fun discoverFiles(
