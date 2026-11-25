@@ -505,21 +505,23 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         options: AnalyticsDisplayOptions = AnalyticsDisplayOptions(),
         checkCancelled: () -> Unit = {}
     ): TrackerResult {
-        if (definition.mode == PeriodMode.PROVIDER_WEEK) {
-            if (!options.capabilities().weekly) return TrackerResult(
+        val windowMinutes = definition.mode.resetWindowMinutes
+        if (windowMinutes != null) {
+            val label = if (windowMinutes == 300) "five-hour" else "weekly"
+            if (!QuotaEligibility.resetAligned(options.capabilities(), windowMinutes)) return TrackerResult(
                 definition,
-                ResolvedPeriod(emptyList(), zone), null, setOf("The selected plan has no verified fixed weekly quota")
+                ResolvedPeriod(emptyList(), zone), null, setOf("The selected plan has no verified fixed $label quota")
             )
             resolver.validate(definition)
             val selectedZone = definition.zoneId.takeIf { it.isNotBlank() }?.let(ZoneId::of) ?: zone
-            val week = resolveResetWeek(definition, now, options)
+            val window = resolveResetWindow(definition, now, options, windowMinutes)
                 ?: return TrackerResult(
                     definition,
                     ResolvedPeriod(emptyList(), selectedZone),
                     null,
-                    setOf("No weekly reset observation available for the selected Analytics scope")
+                    setOf("No $label reset observation available for the selected quota scope")
                 )
-            val period = ResolvedPeriod(listOf(week.interval), selectedZone, week.issues)
+            val period = ResolvedPeriod(listOf(window.interval), selectedZone, window.issues)
             return evaluateResolved(definition, period, now, checkCancelled)
         }
         val period = resolver.resolve(definition, now, zone) { tracker, selectedZone, instant ->
@@ -536,22 +538,23 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         return evaluateResolved(definition, effectivePeriod, now, checkCancelled)
     }
 
-    private fun resolveResetWeek(
+    private fun resolveResetWindow(
         definition: TrackerDefinition,
         now: Instant,
         options: AnalyticsDisplayOptions,
-    ): ResetWeek? {
+        windowMinutes: Int,
+    ): ResetWindow? {
         val collected = collection()
         val snapshot = UsageSnapshot(
             collection = collected,
             analytics = analytics(collected.lastCompleted ?: now),
             evaluatedAt = now
         )
-        val scopeOptions = if (definition.quotaPoolId.isBlank()) options else options.copy(quotaScope = "")
+        val scopeOptions = if (definition.quotaPoolId.isBlank()) options else options.copy(quotaScope = "", fiveHourScope = "")
         val reading = QuotaPresentation.select(
-            QuotaPresentation.forPool(snapshot, definition.quotaPoolId), scopeOptions
+            QuotaPresentation.forPool(snapshot, definition.quotaPoolId), scopeOptions, windowMinutes
         ).reading
-        return ResetWeekResolver.resolve(reading, now)
+        return ResetWindowResolver.resolve(reading, now, windowMinutes)
     }
 
     private fun alignDailyPeriod(
@@ -560,7 +563,7 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         now: Instant,
         options: AnalyticsDisplayOptions,
     ): ResolvedPeriod {
-        val week = if (options.capabilities().weekly) resolveResetWeek(definition, now, options) else null
+        val week = if (options.capabilities().weekly) resolveResetWindow(definition, now, options, 10080) else null
         if (week == null) {
             return period.copy(issues = period.issues +
                 "Daily usage uses its normal boundary because no weekly reset is available for the selected account and quota pool")
@@ -593,20 +596,24 @@ class UsageDatabase private constructor(readOnly: Boolean, private val connectio
         TrackerResult(definition, period, null, period.issues + "Total exceeds supported integer range")
     }
 
-    fun budgetEstimates(analytics: UsageAnalytics, issues: Set<String>): Map<String, QuotaBudgetEstimate> =
-        analytics.quotaObservations.filter { it.usage.windowMinutes == 10080 }
+    fun budgetEstimates(
+        analytics: UsageAnalytics,
+        issues: Set<String>,
+        capabilities: PlanCapabilities = AnalyticsDisplayOptions().capabilities(),
+    ): Map<String, QuotaBudgetEstimate> =
+        analytics.quotaObservations.filter { QuotaEligibility.budget(capabilities, it.usage.windowMinutes) }
             .groupBy(QuotaPresentation::scope).mapValues { (_, readings) ->
                 val reading = readings.maxBy { it.time }
-                val week = ResetWeekResolver.resolve(reading, reading.time)
+                val window = ResetWindowResolver.forBudget(reading)
                 val tokens = try {
-                    week?.let { total(listOf(it.interval), reading.time) }
+                    window?.let { total(listOf(it.interval), reading.time) }
                 } catch (_: ArithmeticException) {
                     null
                 } catch (failure: java.sql.SQLException) {
                     if (failure.message?.contains("integer overflow") != true) throw failure
                     null
                 }
-                QuotaBudgetEstimate.calculate(reading, tokens, week, issues)
+                QuotaBudgetEstimate.calculate(reading, tokens, window, issues)
             }
 
     /** Daily and weekly totals in one consistent database read snapshot. */

@@ -15,8 +15,10 @@ class ConditionalSettingsTest {
         assertFalse(day.copy(startTime = "08:00").supportsDailyWeeklyReset())
     }
 
-    @Test fun providerWeeksOnlyExposeApplicablePeriodControls() {
+    @Test fun providerPeriodsOnlyExposeApplicablePeriodControls() {
         assertEquals(setOf("period", "zone"), trackerSettingVisibility(PeriodMode.PROVIDER_WEEK, SpanUnit.WEEK, EndAnchor.NOW, false))
+        assertEquals(setOf("period", "zone", "boundaries"),
+            trackerSettingVisibility(PeriodMode.PROVIDER_FIVE_HOUR, SpanUnit.HOUR, EndAnchor.NOW, false))
         assertEquals(setOf("period", "zone", "amount", "unit", "days", "current"),
             trackerSettingVisibility(PeriodMode.CALENDAR, SpanUnit.DAY, EndAnchor.NOW, false))
         val hours = trackerSettingVisibility(PeriodMode.CALENDAR, SpanUnit.HOUR, EndAnchor.NOW, false)
@@ -29,6 +31,20 @@ class ConditionalSettingsTest {
         }
         assertTrue(trackerSettingVisibility(PeriodMode.REPEATING, SpanUnit.DAY, EndAnchor.NOW, true).isEmpty())
         assertEquals(setOf("boundaries"), trackerSettingVisibility(PeriodMode.FIXED, SpanUnit.HOUR, EndAnchor.NOW, true))
+    }
+
+    @Test fun providerFiveHourChoiceRequiresFiveHoursAndAFixedReset() {
+        val supported = QuotaPlanProfile.CODEX_WEEKLY_AND_FIVE_HOUR.capabilities()
+        val mode = PeriodMode.PROVIDER_FIVE_HOUR
+        val fiveHours = TrackerDefinition(amount = 5, unit = SpanUnit.HOUR)
+        assertContains(trackerPeriodChoices(fiveHours, supported), mode)
+        assertFalse(mode in trackerPeriodChoices(fiveHours, PlanCapabilities.CODEX_WEEKLY))
+        assertFalse(mode in trackerPeriodChoices(fiveHours.copy(amount = 4), supported))
+        assertFalse(mode in trackerPeriodChoices(fiveHours.copy(amount = 6), supported))
+        assertFalse(mode in trackerPeriodChoices(fiveHours.copy(amount = 300, unit = SpanUnit.MINUTE), supported))
+        val unknownBoundary = supported.copy(pools = supported.pools.map { it.copy(boundary = QuotaBoundaryKind.UNKNOWN) })
+        assertFalse(mode in trackerPeriodChoices(fiveHours, unknownBoundary))
+        assertContains(trackerPeriodChoices(fiveHours.copy(mode = mode), PlanCapabilities.CODEX_WEEKLY), mode)
     }
 
     @Test fun hidingWrappedRowsRemovesLabelsAndEmptyCategoriesButKeepsDraftAndCollapseState() = SwingUtilities.invokeAndWait {

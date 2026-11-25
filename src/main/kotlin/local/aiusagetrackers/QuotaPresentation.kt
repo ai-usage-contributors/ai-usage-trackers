@@ -1,5 +1,7 @@
 package local.aiusagetrackers
 
+import com.intellij.util.xmlb.SkipDefaultValuesSerializationFilters
+import com.intellij.util.xmlb.annotations.Property
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -35,8 +37,31 @@ data class AnalyticsDisplayOptions(
     var colorWeeklyQuota: Boolean = false,
     var planProfile: QuotaPlanProfile = QuotaPlanProfile.CODEX_WEEKLY_AND_FIVE_HOUR,
     var showReportedPools: Boolean = false,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var fiveHourPercentMode: QuotaPercentMode? = null,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var estimateFiveHourBudget: Boolean = false,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var lastRequestFiveHourPercentUsed: Boolean = false,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var lastRequestMetricOrder: TokenMetricOrder = TokenMetricOrder.TOKENS_WEEKLY_FIVE_HOUR,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var lastRequestTokenPrefix: String = "",
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var lastRequestWeeklyPrefix: String = "",
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var lastRequestFiveHourPrefix: String = "",
 ) {
     fun capabilities(): PlanCapabilities = planProfile.capabilities()
+
+    fun percentMode(windowMinutes: Int): QuotaPercentMode =
+        if (windowMinutes == 300) fiveHourPercentMode ?: quotaPercentMode else quotaPercentMode
+
+    fun showsBudgetEstimate(windowMinutes: Int): Boolean = QuotaEligibility.budget(capabilities(), windowMinutes) &&
+        if (windowMinutes == 300) estimateFiveHourBudget else estimateBudget
+
+    fun lastRequestMetricLayout(): TokenMetricLayout =
+        TokenMetricLayout(lastRequestMetricOrder, lastRequestTokenPrefix, lastRequestWeeklyPrefix, lastRequestFiveHourPrefix)
 
     fun validate() {
         listOf(weeklyQuotaLabel, weeklyResetLabel, fiveHourQuotaLabel, fiveHourResetLabel).forEach { label ->
@@ -49,6 +74,7 @@ data class AnalyticsDisplayOptions(
         }
         require(quotaScope.length <= 512 && quotaScope.none(Char::isISOControl)) { "Invalid quota observation scope" }
         require(fiveHourScope.length <= 512 && fiveHourScope.none(Char::isISOControl)) { "Invalid five-hour observation scope" }
+        lastRequestMetricLayout().validate()
         listOf(lastRequestStyle, weeklyQuotaStyle, weeklyResetStyle, fiveHourQuotaStyle, fiveHourResetStyle).forEach(
             StatusValueStyle::parse
         )
@@ -76,7 +102,10 @@ data class AnalyticsDisplayOptions(
             weeklyQuotaStyle = "",
             weeklyResetStyle = "",
             fiveHourQuotaStyle = "",
-            fiveHourResetStyle = ""
+            fiveHourResetStyle = "",
+            lastRequestTokenPrefix = "",
+            lastRequestWeeklyPrefix = "",
+            lastRequestFiveHourPrefix = "",
         )
     }
 }
@@ -97,6 +126,15 @@ data class QuotaSelection(
             listOfNotNull(refreshedAt, evaluatedAt).maxOrNull()?.let { Duration.between(observed, it) > Duration.ofMinutes(15) }
         } == true
 
+    fun matchingEstimate(snapshot: UsageSnapshot): QuotaBudgetEstimate? {
+        val observation = reading ?: return null
+        if (expired || observation.discontinuity || observation.usage.disabled) return null
+        return snapshot.budgetEstimates[QuotaPresentation.scope(observation)]?.takeIf {
+            it.observedAt == observation.time && it.usedPercent == observation.usage.usedPercent &&
+                it.resetsAt?.epochSecond == observation.usage.resetsAt
+        }
+    }
+
     fun percentage(mode: QuotaPercentMode): String? {
         if (expired || reading?.usage?.disabled == true) return null
         val used = reading?.usage?.usedPercent ?: return null
@@ -104,6 +142,16 @@ data class QuotaSelection(
             if (mode == QuotaPercentMode.REMAINING) BigDecimal.valueOf(100).subtract(it) else it
         }
         return value.setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "%"
+    }
+
+    fun fiveHourGoalPercent(): BigDecimal? {
+        val reset = reading?.usage?.resetsAt?.let(Instant::ofEpochSecond) ?: return null
+        val now = evaluatedAt?.takeUnless { it == Instant.EPOCH } ?: refreshedAt ?: return null
+        val remaining = Duration.between(now, reset)
+        if (remaining <= Duration.ZERO || remaining > Duration.ofHours(5)) return null
+        // Advance after a whole-hour boundary, as weekly pacing does for days.
+        val allowanceHours = (5 - remaining.toHours()).coerceAtLeast(1)
+        return BigDecimal.valueOf(20 * allowanceHours)
     }
 
     fun resetDuration(): String? {

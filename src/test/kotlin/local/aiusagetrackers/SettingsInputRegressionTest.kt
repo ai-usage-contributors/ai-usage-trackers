@@ -12,6 +12,64 @@ class SettingsInputRegressionTest {
     private fun input(root: Container, caption: String): JComponent = controls(root).filterIsInstance<JLabel>()
         .single { it.text == caption }.getClientProperty("settingsRow").let { (it as Pair<*, *>).second as JComponent }
 
+    @Test fun metricOrderHidesIneligibleFiveHourMetricAndPreservesItsPosition() = SwingUtilities.invokeAndWait {
+        val form = SettingsForm()
+        val share = JCheckBox()
+        val label = JLabel("Five-hour share")
+        form.addRow(label, share)
+        var orderChanges = 0
+        val metrics = TokenMetricSettings { orderChanges++ }
+        metrics.addRows(form)
+        metrics.load(TokenMetricLayout(
+            order = TokenMetricOrder.WEEKLY_FIVE_HOUR_TOKENS,
+            fiveHourPrefix = "5h ",
+        ))
+        val order = input(form, "Metric order") as JComboBox<*>
+        val prefix = input(form, "5h % prefix")
+        val purpose = "Show the period's approximate five-hour share."
+        val reason = "Choose a supported period of 1–5 hours or 1–299 minutes to show this share."
+        val changesAfterLoad = orderChanges
+
+        metrics.updateFiveHourAvailability(share, purpose, reason)
+        assertFalse(share.isEnabled)
+        assertEquals(reason, share.toolTipText)
+        assertEquals(reason, label.accessibleContext.accessibleDescription)
+        assertEquals(reason, label.toolTipText)
+        assertFalse(prefix.isVisible)
+        assertEquals(listOf("Tokens → Weekly %", "Weekly % → Tokens"),
+            (0 until order.itemCount).map { order.getItemAt(it).toString() })
+        assertEquals("Weekly % → Tokens", order.selectedItem?.toString())
+        assertEquals(changesAfterLoad, orderChanges)
+
+        order.selectedIndex = 0
+        assertEquals(TokenMetricOrder.TOKENS_FIVE_HOUR_WEEKLY, metrics.value().order)
+        metrics.updateFiveHourAvailability(share, purpose, null)
+        assertTrue(share.isEnabled)
+        assertEquals(purpose, share.accessibleContext.accessibleDescription)
+        assertEquals(purpose, label.toolTipText)
+        assertTrue(prefix.isVisible)
+        assertEquals(6, order.itemCount)
+        assertEquals("Tokens → 5h % → Weekly %", order.selectedItem?.toString())
+        assertEquals("5h ", metrics.value().fiveHourPrefix)
+        assertEquals(changesAfterLoad + 1, orderChanges)
+    }
+
+    @Test fun lastRequestOrderAndTooltipFollowTheAccountQuotaScheme() = SwingUtilities.invokeAndWait {
+        AnalyticsSettingsPanel { UsageSnapshot() }.use { panel ->
+            val options = AnalyticsDisplayOptions(lastRequestMetricOrder = TokenMetricOrder.FIVE_HOUR_WEEKLY_TOKENS)
+            panel.reset(options.copy(planProfile = QuotaPlanProfile.CODEX_WEEKLY))
+            val share = input(panel.requestSettings, "Last request five-hour share")
+            val order = input(panel.requestSettings, "Metric order") as JComboBox<*>
+            assertFalse(share.isEnabled)
+            assertEquals(FIVE_HOUR_PLAN_REQUIRED, share.accessibleContext.accessibleDescription)
+            assertEquals("Weekly % → Tokens", order.selectedItem?.toString())
+            panel.planProfile.selectedItem = QuotaPlanProfile.CODEX_WEEKLY_AND_FIVE_HOUR
+            assertTrue(share.isEnabled)
+            assertEquals("5h % → Weekly % → Tokens", order.selectedItem?.toString())
+            assertEquals(options.lastRequestMetricOrder, panel.options().lastRequestMetricOrder)
+        }
+    }
+
     @Test fun generalContainsBasicsAndAdvancedSharesVendorAndAccountDrafts() = SwingUtilities.invokeAndWait {
         val panel = ProviderSettingsPanel({}, {})
         assertTrue(controls(panel).filterIsInstance<JLabel>().none { it.text == "Account alias" })

@@ -13,8 +13,9 @@ class VendorSettingsTest {
             panel.vendor(UsageVendor.ANTIGRAVITY)
             panel.reset(AnalyticsDisplayOptions(planProfile = QuotaPlanProfile.ANTIGRAVITY_REPORTED, showReportedPools = true))
             fun controls(root: Container): List<java.awt.Component> = root.components.toList() + root.components.filterIsInstance<Container>().flatMap(::controls)
-            val mode = controls(panel).filterIsInstance<javax.swing.JComboBox<*>>().single { it.selectedItem is QuotaPercentMode }
-            assertTrue(mode.isEnabled)
+            val modes = controls(panel).filterIsInstance<javax.swing.JComboBox<*>>().filter { it.selectedItem is QuotaPercentMode }
+            val mode = modes.single { it.isEnabled }
+            assertFalse(modes.single { it !== mode }.isEnabled)
             mode.selectedItem = QuotaPercentMode.REMAINING
             assertEquals(QuotaPercentMode.REMAINING, panel.options().quotaPercentMode)
             assertFalse(panel.options().capabilities().weekly)

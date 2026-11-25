@@ -51,7 +51,7 @@ class ExportTrackersDialog(parent: JComponent, hasSelection: Boolean) : DialogWr
     override fun createCenterPanel(): JComponent = JPanel(BorderLayout(0, JBUI.scale(8))).apply {
         add(scope, BorderLayout.NORTH); add(JPanel(GridLayout(0, 1)).apply { add(includeDisplay); add(includeGeneral) }, BorderLayout.CENTER)
         add(
-            JLabel("Exports the current settings draft. Usage history and source paths are excluded."),
+            JLabel("<html>Exports tracker definitions from the current draft and any selected display settings.<br>Usage history, source paths, and credentials are excluded.</html>"),
             BorderLayout.SOUTH
         )
     }
@@ -95,6 +95,7 @@ class ImportTrackersDialog(
         isOKActionEnabled = count <= limit
         summary.text = buildString {
             append("${configuration.trackers.size} imported trackers; resulting list: $count / $limit.\n")
+            append("The file contains tracker definitions and can include appearance, vendor labels and carousel settings. Usage history and source paths are excluded.\n")
             if (count > limit) append("Choose Replace or cancel: Merge exceeds the tracker limit.\n")
             append("Order is preserved. Apply/OK saves the draft; Cancel in Settings discards it.\n\n")
             configuration.trackers.forEach { append("• ${it.name}: ${it.amount} ${it.unit.label.lowercase()} (${it.mode.label}); quota pool: ${it.quotaPoolId.ifEmpty { "account default (legacy)" }}\n") }

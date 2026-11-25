@@ -40,6 +40,7 @@ import javax.swing.event.ListDataEvent
 import javax.swing.event.ListDataListener
 
 private const val EXPORT_TRACKERS = "Export Trackers"
+private const val FIVE_HOUR_SHARE_HELP = "Show the period's approximate share of the five-hour token budget."
 
 class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = RibbonWidthStatistics()) :
     JPanel(BorderLayout(8, 8)), AutoCloseable {
@@ -90,7 +91,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         providerLoading = false
         if (!loading) {
             commitQuotaAccountSelection()
-            updateColorControls(); refreshWidgetPreview()
+            updateColorControls(); enableFields(); refreshWidgetPreview()
         }
     }
 
@@ -105,11 +106,12 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
 
     private fun trackerCapabilities(definition: TrackerDefinition? = list.selectedValue): PlanCapabilities {
         val id = definition?.accountId ?: quotaAccountId
-        return if (id == quotaAccountId) analyticsEditor.options().capabilities()
-        else generalEditor.value().profiles.firstOrNull { it.id == id }?.analytics?.capabilities()
-            ?: PlanCapabilities.UNKNOWN
+        return trackerAnalyticsOptions(id)?.capabilities() ?: PlanCapabilities.UNKNOWN
     }
 
+    private fun trackerAnalyticsOptions(accountId: String): AnalyticsDisplayOptions? =
+        if (accountId == quotaAccountId) analyticsEditor.options()
+        else generalEditor.value().profiles.firstOrNull { it.id == accountId }?.analytics
     private val name = JTextField()
     private val fixedAuxiliary = linkedMapOf(
         "request" to JCheckBox("Last request"),
@@ -132,11 +134,14 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private val trackerColors = SettingsForm()
     private val palette = PaletteEditor(::presentationChanged)
     private val weeklyPacing = JCheckBox("Adjust weekly colors for reset progress")
+    private val separateFiveHourColors = JCheckBox("Color five-hour tracker shares separately", true)
     private val legacyNotice = JLabel("Legacy schedule retained")
     private val replaceLegacy = JButton("Use automatic periods")
-    private val showPercentUsed = JCheckBox("Show percentage used")
+    private val showPercentUsed = JCheckBox("Show weekly percentage used")
+    private val showFiveHourPercentUsed = JCheckBox("Show five-hour percentage used")
+    private val metricSettings = TokenMetricSettings(::changed)
     private val quotaColors = JCheckBox("Color by quota goal")
-    private val allPercentUsed = JCheckBox("Show percentage used on all token metrics")
+    private val allPercentUsed = JCheckBox("Show weekly percentage used on all token metrics")
     private val customFont = JCheckBox("Custom widget font size")
     private val fontSize = JSpinner(SpinnerNumberModel(12, 8, 24, 1))
     private val amount = JSpinner(SpinnerNumberModel(1, 1, 1000, 1))
@@ -172,7 +177,16 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private var generation = 0
     private var previewJob: Job? = null
     private var transferJob: Job? = null
+    private val importSettings = JButton("Import Settings…").apply { addActionListener { importTrackers() } }
+    private val exportSettings = JButton("Export Settings…").apply {
+        isEnabled = false
+        addActionListener { exportTrackers() }
+    }
     private var transferBusy = false
+        set(value) {
+            field = value
+            updateTransferControls()
+        }
     private var transferGeneration = 0
     private var hintPopup: JBPopup? = null
     private var pendingHint: String? = null
@@ -186,9 +200,9 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     private fun initializeUi() {
 
         model.addListDataListener(object : ListDataListener {
-            override fun intervalAdded(e: ListDataEvent) = refreshWidgetPreview()
-            override fun intervalRemoved(e: ListDataEvent) = refreshWidgetPreview()
-            override fun contentsChanged(e: ListDataEvent) = refreshWidgetPreview()
+            override fun intervalAdded(e: ListDataEvent) = trackerListChanged()
+            override fun intervalRemoved(e: ListDataEvent) = trackerListChanged()
+            override fun contentsChanged(e: ListDataEvent) = trackerListChanged()
         })
         list.selectionMode = ListSelectionModel.SINGLE_SELECTION
         list.cellRenderer = object : DefaultListCellRenderer() {
@@ -219,7 +233,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         fields.addRow(legacyNotice, replaceLegacy)
         row("Name", name, "Name shown in the tracker list and usage details.")
         row("Account / token dataset", trackerAccount, "Choose the account whose token usage this tracker counts.")
-        row("Quota pool", trackerPool, "Choose the quota limit that supplies this tracker's weekly reset.")
+        row("Quota pool", trackerPool, "Choose the quota limit that supplies this tracker's provider reset.")
         row(
             "Weekly reset alignment",
             resetDailyAtWeeklyReset,
@@ -242,7 +256,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         row(
             "Period",
             mode,
-            "Use calendar boundaries, a rolling duration, or weekly quota resets."
+            "Choose calendar boundaries, a rolling duration, or a provider reset, with five-hour alignment available only for Amount 5 and Unit Hours on a supported account."
         )
         row(
             "Days to include",
@@ -293,10 +307,16 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         )
         row("Tracker label", hideLabel, "Hide this tracker label while retaining its accessible name and identity.")
         row(
-            "Percentage used",
+            "Weekly share",
             showPercentUsed,
-            "Append |7.4% with no spaces: approximate share of the selected weekly token budget. Missing estimates show |—."
+            "Show the period's approximate share of the selected weekly token budget. Missing estimates show a dash."
         )
+        row(
+            "Five-hour share",
+            showFiveHourPercentUsed,
+            FIVE_HOUR_SHARE_HELP
+        )
+        metricSettings.addRows(fields)
 
 
         fun followFocus(component: Component) {
@@ -330,24 +350,29 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             .setAddActionUpdater { model.size < trackerLimit() && !transferBusy }
             .setForcedDnD()
 
-        fun extra(label: String, icon: Icon, enabled: () -> Boolean, action: () -> Unit) {
-            decorator.addExtraAction(object : DumbAwareAction(label, label, icon) {
+        fun extra(label: String, icon: Icon, enabled: () -> Boolean, help: String = label, action: (AnActionEvent) -> Unit) {
+            decorator.addExtraAction(object : DumbAwareAction(label, help, icon) {
                 override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
                 override fun update(e: AnActionEvent) {
                     e.presentation.isEnabled = !closed && !transferBusy && enabled()
                 }
 
-                override fun actionPerformed(e: AnActionEvent) = action()
+                override fun actionPerformed(e: AnActionEvent) = action(e)
             })
         }
         extra(
             "Duplicate",
             AllIcons.Actions.Copy,
             { list.selectedIndex >= 0 && model.size < trackerLimit() },
-            ::duplicateTracker
-        )
-        extra("Import", AllIcons.Actions.Download, { true }, ::importTrackers)
-        extra("Export", AllIcons.General.Export, { model.size > 0 }, ::exportTrackers)
+        ) { duplicateTracker() }
+        extra("Sort Trackers", AllIcons.ObjectBrowser.Sorted, { model.size > 1 },
+            "Sort all trackers by configured duration, shortest first or longest first.") { event ->
+            val shortestFirst = "Shortest First"
+            JBPopupFactory.getInstance().createPopupChooserBuilder(listOf(shortestFirst, "Longest First"))
+                .setTitle("Sort Trackers by Duration")
+                .setItemChosenCallback { sortTrackers(it == shortestFirst) }
+                .createPopup().showInBestPositionFor(event.dataContext)
+        }
         val left = JPanel(BorderLayout(4, 4)).apply {
             add(decorator.createPanel(), BorderLayout.CENTER)
         }
@@ -484,12 +509,21 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
                 addRow(JLabel("Coloring"), coloringEnabled)
                 addRow(JLabel("Weekly quota colors"), analyticsEditor.colorWeeklyQuota)
                 addRow(JLabel("Weekly pacing"), weeklyPacing)
+                SettingsHelp.attach(separateFiveHourColors, "Use a separate duration-based color for the five-hour percentage when the tracker's Color by quota goal is enabled.")
+                addRow(JLabel("Five-hour tracker colors"), separateFiveHourColors)
                 addBlock(trackerColors); addBlock(palette)
             }), BorderLayout.CENTER)
         }
         val advanced = SettingsForm().apply {
             addCategory(generalEditor.advancedPanel as SettingsCategory)
             section("Tracker limit"); addRow(JLabel("Tracker limit"), trackerLimit)
+            section("Settings transfer")
+            SettingsHelp.attach(importSettings, "Import tracker definitions from JSON, with optional appearance, vendor labels, and carousel settings.")
+            SettingsHelp.detail(importSettings, "Preview and merge or replace the tracker list, map accounts, and choose which optional settings to apply. Apply or OK saves the draft.")
+            addRow(JLabel("Import from JSON"), importSettings)
+            SettingsHelp.attach(exportSettings, "Export selected or all tracker definitions to JSON, with optional appearance, vendor labels, and carousel settings.")
+            SettingsHelp.detail(exportSettings, "Export the current settings draft without usage history, source paths, or credentials.")
+            addRow(JLabel("Export to JSON"), exportSettings)
         }
         SettingsHelp.attach(quotaAccount, "Choose the account whose quota settings you are editing.")
         val quotaPanel = JPanel(BorderLayout()).apply {
@@ -535,8 +569,9 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         trackerPool.addPopupMenuListener(object : javax.swing.event.PopupMenuListener {
             override fun popupMenuWillBecomeVisible(e: javax.swing.event.PopupMenuEvent) {
                 val definition = list.selectedValue ?: return
+                val windowMinutes = definition.mode.resetWindowMinutes ?: 10080
                 val pools = service<UsageService>().snapshot(definition.accountId).analytics.quotaObservations
-                    .filter { it.usage.windowMinutes == 10080 }.map { it.usage.bucket }.distinct()
+                    .filter { it.usage.windowMinutes == windowMinutes }.map { it.usage.bucket }.distinct()
                 providerLoading = true
                 val existing = (0 until trackerPool.itemCount).map { trackerPool.getItemAt(it).id }
                 pools.filter { it !in existing }.forEach { trackerPool.addItem(AccountChoice(it, it)) }
@@ -589,6 +624,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         }
         fontSize.addChangeListener { presentationChanged() }
         showPercentUsed.addActionListener { changed() }
+        showFiveHourPercentUsed.addActionListener { changed() }
         quotaColors.addActionListener { changed() }
         ribbonPlacement.addActionListener { changed() }
         ribbonScrollMode.addActionListener { updateRibbonControls(); presentationChanged() }
@@ -598,6 +634,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         ribbonAutoExpand.addActionListener { presentationChanged() }
         hideLabel.addActionListener { changed() }
         weeklyPacing.addActionListener { presentationChanged() }
+        separateFiveHourColors.addActionListener { presentationChanged() }
         replaceLegacy.addActionListener {
             val index = list.selectedIndex
             if (index >= 0) {
@@ -647,7 +684,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         quotaColors.isEnabled = QuotaEligibility.budget(capabilities)
         palette.quotaApplicable(capabilities.weekly || QuotaEligibility.budget(capabilities))
         updateAuxiliaryControls(capabilities)
-        listOf(palette, trackerColors, weeklyPacing, analyticsEditor.colorWeeklyQuota).forEach {
+        listOf(palette, trackerColors, weeklyPacing, separateFiveHourColors, analyticsEditor.colorWeeklyQuota).forEach {
             setSettingVisible(it, coloringEnabled.isSelected, coloringEnabled)
         }
         rebuildTrackerColors()
@@ -696,10 +733,20 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
 
     private fun reorderPreview(sourceId: String, insertion: Int) {
         if (closed || loading || transferBusy) return
-        val selected = list.selectedValue?.id
         val before = trackers()
-        val after = TrackerOrdering.moveVisible(before, sourceId, insertion)
+        applyTrackerOrder(before, TrackerOrdering.moveVisible(before, sourceId, insertion))
+    }
+
+    private fun sortTrackers(ascending: Boolean) {
+        if (closed || loading || transferBusy) return
+        val before = trackers()
+        applyTrackerOrder(before, TrackerOrdering.sortByDuration(before, ascending))
+        if (list.selectedIndex >= 0) list.ensureIndexIsVisible(list.selectedIndex)
+    }
+
+    private fun applyTrackerOrder(before: List<TrackerDefinition>, after: List<TrackerDefinition>) {
         if (before == after) return
+        val selected = list.selectedValue?.id
         loading = true
         model.removeAll(); after.forEach(model::add)
         list.selectedIndex = after.indexOfFirst { it.id == selected }
@@ -761,7 +808,18 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             .setResizable(true).setCancelOnClickOutside(true).createPopup().also { it.showUnderneathOf(equivalence) }
     }
 
+    private fun trackerListChanged() {
+        updateTransferControls()
+        refreshWidgetPreview()
+    }
+
+    private fun updateTransferControls() {
+        importSettings.isEnabled = !closed && !transferBusy
+        exportSettings.isEnabled = importSettings.isEnabled && !model.isEmpty
+    }
+
     private fun importTrackers() {
+        if (closed || transferBusy) return
         val file =
             FileChooser.chooseFile(FileChooserDescriptorFactory.createSingleFileDescriptor("json"), this, null, null)
                 ?: return
@@ -813,6 +871,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
     }
 
     private fun exportTrackers() {
+        if (closed || transferBusy || model.isEmpty) return
         val options = ExportTrackersDialog(this, list.selectedIndex >= 0)
         if (!options.showAndGet() || closed) return
         val definitions = if (options.selectedOnly) listOfNotNull(list.selectedValue?.copy()) else trackers()
@@ -862,6 +921,10 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         generalEditor.validateDraft()
         validateSetting(trackerLimit) { require(model.size <= trackerLimit()) { "Remove trackers or increase the tracker limit before applying" } }
         trackers().forEachIndexed { index, tracker ->
+            if (runCatching { tracker.metricLayout().validate() }.isFailure) {
+                list.selectedIndex = index
+                metricSettings.validateDraft()
+            }
             try {
                 UsagePeriodResolver().validate(tracker)
             } catch (failure: Exception) {
@@ -909,7 +972,8 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             (verticalInterval.value as Number).toInt(),
             verticalDirection.selectedItem as RibbonStepDirection,
             ribbonAutoExpand.isSelected,
-            coloringEnabled.isSelected
+            coloringEnabled.isSelected,
+            separateFiveHourColors.isSelected,
         )
 
     private fun updateRibbonControls() {
@@ -959,6 +1023,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         setSettingVisible(fontSize, customFont.isSelected, customFont)
         allPercentUsed.isSelected = display.allTokenPercentUsed
         weeklyPacing.isSelected = display.weeklyPacing
+        separateFiveHourColors.isSelected = display.separateFiveHourColors
         palette.reset(display.palette)
         palette.resetMultipliers(display.aboveQuotaMultiplier, display.warningQuotaMultiplier)
         extraHomes.text = homes.joinToString("\n")
@@ -985,6 +1050,8 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             ribbonPlacement.selectedItem = value.ribbonPlacement
             hideLabel.isSelected = value.hideLabel || StatusValueStyle.forDisplay(value.style).hideLabel
             showPercentUsed.isSelected = value.showPercentUsed
+            showFiveHourPercentUsed.isSelected = value.showFiveHourPercentUsed
+            metricSettings.load(value.metricLayout())
             quotaColors.isSelected = value.colorByQuotaGoal
             listOf(
                 name to value.name, zone to value.zoneId
@@ -993,7 +1060,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             amount.value = value.amount
             endOffset.value = value.endOffset
             unit.selectedItem = value.unit
-            mode.selectedItem = value.mode
+            refreshPeriodChoices(value, trackerCapabilities(value))
             selection.selectedItem = value.selection
             endAnchor.selectedItem = value.endAnchor
             current.isSelected = value.includeCurrent
@@ -1015,9 +1082,10 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         trackerPool.removeAllItems()
         trackerPool.addItem(AccountChoice("", "Account default (legacy behavior)"))
         val profile = generalEditor.value().profiles.firstOrNull { it.id == value.accountId }
-        val pools =
-            if (profile?.vendor == UsageVendor.CLAUDE) profile.analytics.capabilities().pools.filter { it.fixedWeek }
-                .map { it.id } else emptyList()
+        val windowMinutes = (value.mode.resetWindowMinutes ?: 10080).toLong()
+        val pools = if (profile?.vendor == UsageVendor.CLAUDE)
+            trackerCapabilities(value).pools.filter { it.duration?.toMinutes() == windowMinutes }.map { it.id }
+        else emptyList()
         (pools + value.quotaPoolId).filter { it.isNotBlank() }.distinct()
             .forEach { trackerPool.addItem(AccountChoice(it, it)) }
         trackerPool.selectedItem =
@@ -1025,33 +1093,42 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         providerLoading = false
     }
 
-    private fun readSelected(): TrackerDefinition = list.selectedValue.copy(
-        accountId = (trackerAccount.selectedItem as? AccountChoice)?.id ?: list.selectedValue.accountId,
-        quotaPoolId = (trackerPool.editor.item as? AccountChoice)?.id ?: trackerPool.editor.item?.toString()?.trim()
-            .orEmpty(),
-        name = name.text.trim(),
-        amount = (amount.value as Number).toInt(),
-        unit = unit.selectedItem as SpanUnit,
-        mode = mode.selectedItem as PeriodMode,
-        selection = selection.selectedItem as DaySelection,
-        includeCurrent = current.isSelected,
-        resetDailyAtWeeklyReset = resetDailyAtWeeklyReset.isSelected,
-        visible = visible.isSelected,
-        showPeriodStart = showPeriodStart.isSelected,
-        zoneId = zone.text.trim(),
-        endAnchor = endAnchor.selectedItem as EndAnchor,
-        endOffset = (endOffset.value as Number).toInt(),
-        ribbonPlacement = ribbonPlacement.selectedItem as RibbonPlacement,
-        hideLabel = hideLabel.isSelected,
-        style = "",
-        showPercentUsed = showPercentUsed.isSelected,
-        colorByQuotaGoal = quotaColors.isSelected,
-    )
+    private fun readSelected(): TrackerDefinition {
+        val layout = metricSettings.value()
+        return list.selectedValue.copy(
+            accountId = (trackerAccount.selectedItem as? AccountChoice)?.id ?: list.selectedValue.accountId,
+            quotaPoolId = (trackerPool.editor.item as? AccountChoice)?.id ?: trackerPool.editor.item?.toString()?.trim()
+                .orEmpty(),
+            name = name.text.trim(),
+            amount = (amount.value as Number).toInt(),
+            unit = unit.selectedItem as SpanUnit,
+            mode = mode.selectedItem as PeriodMode,
+            selection = selection.selectedItem as DaySelection,
+            includeCurrent = current.isSelected,
+            resetDailyAtWeeklyReset = resetDailyAtWeeklyReset.isSelected,
+            visible = visible.isSelected,
+            showPeriodStart = showPeriodStart.isSelected,
+            zoneId = zone.text.trim(),
+            endAnchor = endAnchor.selectedItem as EndAnchor,
+            endOffset = (endOffset.value as Number).toInt(),
+            ribbonPlacement = ribbonPlacement.selectedItem as RibbonPlacement,
+            hideLabel = hideLabel.isSelected,
+            style = "",
+            showPercentUsed = showPercentUsed.isSelected,
+            showFiveHourPercentUsed = showFiveHourPercentUsed.isSelected,
+            metricOrder = layout.order,
+            tokenPrefix = layout.tokenPrefix,
+            weeklyPrefix = layout.weeklyPrefix,
+            fiveHourPrefix = layout.fiveHourPrefix,
+            colorByQuotaGoal = quotaColors.isSelected,
+        )
+    }
 
     private fun changed() {
         if (loading || list.selectedIndex < 0 || closed) return
-        if (mode.selectedItem == PeriodMode.PROVIDER_WEEK && list.selectedValue.mode != PeriodMode.PROVIDER_WEEK && !trackerCapabilities().weekly) {
-            loading = true; mode.selectedItem = list.selectedValue.mode; loading = false
+        val previous = list.selectedValue
+        if (mode.selectedItem == PeriodMode.PROVIDER_WEEK && previous.mode != PeriodMode.PROVIDER_WEEK && !trackerCapabilities().weekly) {
+            loading = true; mode.selectedItem = previous.mode; loading = false
             mode.toolTipText = "A verified fixed weekly quota binding is required"
             return
         }
@@ -1060,12 +1137,16 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         if (mode.selectedItem == PeriodMode.PROVIDER_WEEK) {
             unit.selectedItem = SpanUnit.WEEK; amount.value = 1; current.isSelected = true
         }
+        if (mode.selectedItem == PeriodMode.PROVIDER_FIVE_HOUR) current.isSelected = true
         if (!daily) {
             selection.selectedItem = DaySelection.ALL
         }
         if (endAnchor.selectedItem == EndAnchor.NOW) endOffset.value = 0
+        val draft = readSelected()
+        if (draft.mode != previous.mode && (draft.mode == PeriodMode.PROVIDER_FIVE_HOUR || previous.mode == PeriodMode.PROVIDER_FIVE_HOUR)) {
+            loadTrackerBinding(draft)
+        }
         enableFields()
-        val previous = model.getElementAt(list.selectedIndex)
         if (mode.selectedItem == PeriodMode.PROVIDER_WEEK && previous.mode != PeriodMode.PROVIDER_WEEK &&
             (trackerPool.editor.item as? AccountChoice)?.id.isNullOrEmpty()
         ) {
@@ -1075,20 +1156,43 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         }
         val next = readSelected()
         model.setElementAt(next, list.selectedIndex)
-        if (previous.amount != next.amount || previous.unit != next.unit || previous.mode != next.mode) {
-            hintTimer.stop()
-            hintPopup?.cancel(); hintPopup = null
-            pendingHint = UnitEquivalence.exactHint(next)
-            if (pendingHint != null) hintTimer.restart()
-        }
+        updatePeriodHint(previous, next)
         loading = false
         schedulePreview()
     }
 
+    private fun updatePeriodHint(previous: TrackerDefinition, next: TrackerDefinition) {
+        if (previous.amount == next.amount && previous.unit == next.unit && previous.mode == next.mode) return
+        hintTimer.stop()
+        hintPopup?.cancel()
+        hintPopup = null
+        pendingHint = UnitEquivalence.exactHint(next)
+        if (pendingHint != null) hintTimer.restart()
+    }
+
+    private fun refreshPeriodChoices(draft: TrackerDefinition, capabilities: PlanCapabilities) {
+        val wasLoading = loading
+        loading = true
+        try {
+            updateSettingsChoices(mode, trackerPeriodChoices(draft, capabilities), draft.mode)
+        } finally {
+            loading = wasLoading
+        }
+    }
+
     private fun enableFields() {
-        showPercentUsed.isEnabled = QuotaEligibility.budget(trackerCapabilities())
-        quotaColors.isEnabled = showPercentUsed.isEnabled
+        if (list.selectedValue == null) return
         val draft = readSelected()
+        val capabilities = trackerCapabilities(draft)
+        refreshPeriodChoices(draft, capabilities)
+        showPercentUsed.isEnabled = QuotaEligibility.budget(capabilities)
+        val fiveHourUnavailableReason = when {
+            !draft.supportsFiveHourShare() -> "Choose a supported period of 1–5 hours or 1–299 minutes to show this share."
+            !QuotaEligibility.budget(capabilities, 300) -> FIVE_HOUR_PLAN_REQUIRED
+            else -> null
+        }
+        metricSettings.updateFiveHourAvailability(showFiveHourPercentUsed, FIVE_HOUR_SHARE_HELP, fiveHourUnavailableReason)
+        quotaColors.isEnabled = showPercentUsed.isEnabled
         setSettingVisible(resetDailyAtWeeklyReset, draft.supportsDailyWeeklyReset(), mode)
         val legacy = draft.usesLegacySchedule()
         val shown = trackerSettingVisibility(
@@ -1130,7 +1234,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         }
         val requested = generation
         preview.text = "Calculating preview…"
-        previewJob = service<UsageService>().preview(definition, display()) { text ->
+        previewJob = service<UsageService>().preview(definition, display(), trackerAnalyticsOptions(definition.accountId)) { text ->
             if (!closed && generation == requested) {
                 preview.text = text; preview.caretPosition = 0
             }
@@ -1141,10 +1245,18 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         widgetPreview.close()
         analyticsEditor.close()
         closed = true; generation++; previewTimer.stop(); previewJob?.cancel()
+        updateTransferControls()
         transferGeneration++; transferJob?.cancel(); hintTimer.stop(); hintPopup?.cancel(); hintPopup = null
     }
 }
 
+internal fun trackerPeriodChoices(definition: TrackerDefinition, capabilities: PlanCapabilities): List<PeriodMode> = buildSet {
+    add(PeriodMode.CALENDAR)
+    add(PeriodMode.ELAPSED)
+    add(PeriodMode.PROVIDER_WEEK)
+    if (definition.hasFiveHourDuration() && QuotaEligibility.resetAligned(capabilities, 300)) add(PeriodMode.PROVIDER_FIVE_HOUR)
+    add(definition.mode)
+}.toList()
 
 internal fun trackerSettingVisibility(mode: PeriodMode, unit: SpanUnit, end: EndAnchor, legacy: Boolean): Set<String> =
     buildSet {
@@ -1154,7 +1266,7 @@ internal fun trackerSettingVisibility(mode: PeriodMode, unit: SpanUnit, end: End
 
 private fun periodSettingVisibility(mode: PeriodMode, unit: SpanUnit, end: EndAnchor): Set<String> = buildSet {
     add("period"); add("zone")
-    if (mode != PeriodMode.PROVIDER_WEEK && mode != PeriodMode.FIXED) {
+    if (mode.resetWindowMinutes == null && mode != PeriodMode.FIXED) {
         add("amount"); add("unit")
     }
     if (mode == PeriodMode.CALENDAR && unit == SpanUnit.DAY) add("days")

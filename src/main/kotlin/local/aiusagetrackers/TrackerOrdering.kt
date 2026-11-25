@@ -1,6 +1,35 @@
 package local.aiusagetrackers
 
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneId
+
 object TrackerOrdering {
+    fun sortByDuration(existing: List<TrackerDefinition>, ascending: Boolean): List<TrackerDefinition> {
+        val byDuration = compareBy(::duration)
+        return existing.sortedWith(if (ascending) byDuration else byDuration.reversed())
+    }
+
+    private fun duration(tracker: TrackerDefinition): Duration {
+        if (tracker.mode == PeriodMode.FIXED) {
+            val explicit = runCatching {
+                val zone = tracker.zoneId.takeIf(String::isNotBlank)?.let(ZoneId::of) ?: ZoneId.systemDefault()
+                val start = LocalDateTime.parse(tracker.fixedStart).atZone(zone)
+                val end = LocalDateTime.parse(tracker.fixedEnd).atZone(zone)
+                Duration.between(start, end)
+            }.getOrNull()
+            if (explicit != null && !explicit.isNegative) return explicit
+        }
+        val minutes = when (tracker.unit) {
+            SpanUnit.MINUTE -> 1L
+            SpanUnit.HOUR -> 60L
+            SpanUnit.DAY -> 1440L
+            SpanUnit.WEEK -> 10080L
+            SpanUnit.MONTH -> 43200L
+        }
+        return Duration.ofMinutes(minutes * tracker.amount)
+    }
+
     private fun rank(unit: SpanUnit): Int = when (unit) {
         SpanUnit.MINUTE -> 0; SpanUnit.HOUR -> 1; SpanUnit.DAY -> 2; SpanUnit.WEEK -> 3; SpanUnit.MONTH -> 4
     }

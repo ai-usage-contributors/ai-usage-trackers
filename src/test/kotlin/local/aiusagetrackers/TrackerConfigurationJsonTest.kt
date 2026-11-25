@@ -1,5 +1,6 @@
 package local.aiusagetrackers
 
+import com.intellij.util.xmlb.XmlSerializer
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.junit.Rule
@@ -75,6 +76,61 @@ class TrackerConfigurationJsonTest {
     }
 
     @Test
+    fun providerFiveHourPeriodRoundTripsAndRejectsIncompatibleConfiguration() {
+        val tracker = TrackerDefinition(unit = SpanUnit.HOUR, amount = 5, mode = PeriodMode.PROVIDER_FIVE_HOUR)
+        val config = TrackerConfiguration(listOf(tracker))
+        val json = TrackerConfigurationJson.encode(config)
+        val root = JsonParser.parseString(json).asJsonObject
+        assertEquals(15, root.get("version").asInt)
+        val decoded = TrackerConfigurationJson.decode(json).trackers.single()
+        assertEquals(tracker.copy(id = decoded.id), decoded)
+        val state = UsageSettings().apply { update(emptyList(), config.trackers) }.state
+        val persisted = XmlSerializer.deserialize(XmlSerializer.serialize(state), UsageSettings.SettingsState::class.java)
+        assertEquals(tracker, UsageSettings().apply { loadState(persisted) }.trackers.single())
+        root.addProperty("version", 14)
+        assertFailsWith<IllegalArgumentException> { TrackerConfigurationJson.decode(root.toString()) }
+        for (invalid in listOf(tracker.copy(amount = 4), tracker.copy(unit = SpanUnit.MINUTE, amount = 300),
+            tracker.copy(includeCurrent = false))) {
+            assertFailsWith<IllegalArgumentException> {
+                TrackerConfigurationJson.encode(TrackerConfiguration(listOf(invalid)))
+            }
+        }
+    }
+
+    @Test
+    fun metricOptionsRoundTripInPortableV13AndLocalSettings() {
+        val tracker = TrackerDefinition(
+            unit = SpanUnit.HOUR, showFiveHourPercentUsed = true,
+            metricOrder = TokenMetricOrder.WEEKLY_FIVE_HOUR_TOKENS,
+            tokenPrefix = "Tokens ", weeklyPrefix = "Week ", fiveHourPrefix = "<5h> ",
+        )
+        val daily = TrackerDefinition(resetDailyAtWeeklyReset = true)
+        val json = TrackerConfigurationJson.encode(TrackerConfiguration(listOf(tracker, daily)))
+        val root = JsonParser.parseString(json).asJsonObject
+        assertEquals(13, root.get("version").asInt)
+        val (decoded, decodedDaily) = TrackerConfigurationJson.decode(json).trackers
+        assertEquals(tracker.copy(id = decoded.id), decoded)
+        assertTrue(decodedDaily.resetDailyAtWeeklyReset)
+        root.addProperty("version", 12)
+        assertFailsWith<IllegalArgumentException> { TrackerConfigurationJson.decode(root.toString()) }
+        assertFailsWith<IllegalArgumentException> {
+            TrackerConfigurationJson.encode(TrackerConfiguration(listOf(tracker.copy(tokenPrefix = "Bad\nPrefix"))))
+        }
+        val options = AnalyticsDisplayOptions(
+            quotaPercentMode = QuotaPercentMode.REMAINING, fiveHourPercentMode = QuotaPercentMode.USED,
+            estimateFiveHourBudget = true, lastRequestFiveHourPercentUsed = true,
+            lastRequestMetricOrder = tracker.metricOrder, lastRequestFiveHourPrefix = tracker.fiveHourPrefix,
+        )
+        val settings = UsageSettings().apply { update(emptyList(), listOf(tracker), analyticsDisplay = options) }
+        val restored = UsageSettings().apply {
+            loadState(XmlSerializer.deserialize(XmlSerializer.serialize(settings.state), UsageSettings.SettingsState::class.java))
+        }
+        assertEquals(options, restored.analyticsDisplay)
+        assertEquals(tracker, restored.trackers.single())
+        assertEquals(QuotaPercentMode.REMAINING, options.copy(fiveHourPercentMode = null).percentMode(300))
+    }
+
+    @Test
     fun minimalContractSuppliesDefaultsAndAcceptsEmptyLists() {
         val minimal =
             """{"format":"codex-usage-trackers","version":11,"trackers":[{"name":"Hourly","account":"legacy-codex","unit":"hour","amount":1,"mode":"calendar"}]}"""
@@ -111,7 +167,7 @@ class TrackerConfigurationJsonTest {
             assertFailsWith<RuntimeException> { TrackerConfigurationJson.decode(root.toString()) }
         }
         (1..10).forEach { version -> reject { it.addProperty("version", version) } }
-        reject { it.addProperty("version", 13) }
+        reject { it.addProperty("version", 16) }
         reject { it.addProperty("version", "1") }
         reject { it.addProperty("format", "other") }
         reject { it.addProperty("extraHomes", "private path") }

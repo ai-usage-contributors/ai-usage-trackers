@@ -38,16 +38,12 @@ for more help.
 Open **Settings > Tools > AI Usage Trackers**, or click the vendor name in the status
 bar and choose **Settings**.
 
-On first load, a popup explains local data processing and links the **Privacy
-Policy**. Choose **Agree and Enable** to begin or **Not Now** to leave processing
-disabled. Closing the popup also leaves processing disabled. Existing installations
-without a saved agreement see the popup too. Once agreed, it does not reappear on
-restart. If declined, it is offered again on the next IDE session.
-
-You can also grant or withdraw agreement in **General** using **I agree to local
-usage processing**, then **Apply** or **OK**. Withdrawing stops processing and
-retains saved history. Agreement is specific to this IDE installation and excluded
-from settings sync and configuration exports.
+If you haven’t agreed to local usage processing, click **Review usage agreement**
+in the status bar. In **General**, review the disclosure and **Privacy Policy**.
+To start processing, select **I agree to local usage processing** and click
+**Apply** or **OK**. To withdraw agreement, clear the checkbox and apply. This
+stops processing and retains saved history. Agreement is specific to this IDE
+installation and excluded from settings sync and configuration exports.
 
 Codex is selected for tracking by default and searches for local Codex logs
 automatically after agreement. In **General**, use **Track usage** to turn collection on or off
@@ -94,7 +90,8 @@ settings you edit.
 ## Set up trackers
 
 In **Trackers**, add, duplicate, remove, rename, hide, or reorder trackers. Use
-the list's move buttons or drag trackers into the order you want.
+the list's move buttons or drag trackers into the order you want. The toolbar
+also sorts trackers by duration, shortest first or longest first.
 
 Choose a period type:
 
@@ -103,6 +100,9 @@ Choose a period type:
 - **Elapsed duration** counts a rolling period in minutes, hours, days, or weeks,
   such as the last 24 hours.
 - **Provider reset-aligned week (all days)** follows the selected weekly quota reset.
+- **Provider reset-aligned 5 hours** follows the selected five-hour quota reset.
+  Set **Unit** to **Hours** and **Amount** to **5** to see the option on an account
+  with a supported five-hour quota scheme.
 
 Calendar-day trackers can include all days, Monday–Friday, or days with usage.
 For a tracker set to one current calendar day, **Also reset daily usage at weekly
@@ -126,8 +126,22 @@ For each tracker, **Placement** lets you keep it fixed or put it in the ribbon.
 Use **Keep outside the ribbon** in Appearance for other values, such as quota
 and reset times. The settings preview shows how your choices will look.
 
+In a tracker's **Status bar** settings, choose its weekly quota share, metric
+order, and text prefixes. On a supported Codex plan, trackers set to
+1–5 hours or 1–299 minutes can also show their estimated share of the
+five-hour quota. This includes provider reset-aligned five-hour trackers.
+The order and prefix controls include the five-hour metric on eligible trackers.
+**Last request** has the same share and display options.
+
+In **Appearance > Coloring**, **Five-hour tracker colors** gives the five-hour
+share its own duration-based color on trackers with **Color by quota goal**
+enabled. The Appearance option is on by default. Metric dividers use the neutral color.
+
 In **Quota**, choose the account's quota scheme and which percentages and reset
-times to show. Select percentage used or remaining, and customize the labels.
+times to show. Choose used or remaining separately for the five-hour quota.
+Enable **Five-hour budget** to show estimated tokens beside that percentage.
+The standalone five-hour quota starts with a 20% usage goal in the first reset
+hour and adds 20 percentage points for each following hour.
 Use **Show last request** in Trackers to add the latest request's token count.
 
 ## View details and refresh
@@ -143,10 +157,11 @@ tracker periods, and issues to review.
 
 ## Import and export settings
 
-Use **Export** in the tracker toolbar to save selected or all tracker definitions.
-You can include appearance settings, vendor labels, and carousel preferences.
+In **Advanced → Settings transfer**, use **Export Settings** to save the selected
+tracker or all trackers. You can include appearance settings, vendor labels,
+and carousel preferences.
 
-Use **Import** to preview a file and choose whether to merge it with your trackers
+Use **Import Settings** to preview a file and choose whether to merge it with your trackers
 or replace them. Review account mappings, then select **Apply** or **OK** to save.
 Usage history and source folders are excluded from these files.
 Only current-format configuration files can be imported.

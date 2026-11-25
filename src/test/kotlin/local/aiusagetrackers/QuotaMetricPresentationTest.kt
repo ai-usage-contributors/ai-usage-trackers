@@ -172,6 +172,63 @@ class QuotaMetricPresentationTest {
     }
 
     @Test
+    fun fiveHourSharesRespectSpanAndAreIndependentOfReportedPercentageMode() {
+        val snapshot = AnalyticsSettingsPanel.sampleSnapshot(1)
+        val definition = TrackerDefinition(
+            unit = SpanUnit.HOUR, amount = 2, showPercentUsed = true, showFiveHourPercentUsed = true,
+            metricOrder = TokenMetricOrder.FIVE_HOUR_TOKENS_WEEKLY,
+            tokenPrefix = "Tokens ", weeklyPrefix = "W ", fiveHourPrefix = "5h ",
+        )
+        val options = AnalyticsDisplayOptions(
+            showQuota = true, showFiveHourQuota = true, quotaPercentMode = QuotaPercentMode.USED,
+            fiveHourPercentMode = QuotaPercentMode.REMAINING, estimateFiveHourBudget = true,
+            lastRequestFiveHourPercentUsed = true, lastRequestFiveHourPrefix = "5h ",
+            lastRequestMetricOrder = TokenMetricOrder.FIVE_HOUR_TOKENS_WEEKLY,
+        )
+        val values = WidgetText.values(snapshot.copy(trackers = listOf(tracker(definition))), showLastRequest = true, options = options)
+        assertEquals(listOf("5h 40.7%|Tokens 2.5M|W 0.7%", "5h 0%|1.2K", "20%", "60%|~3.7M"), values.map { it.text })
+        assertEquals("40%|~2.5M", WidgetText.values(snapshot, options = options.copy(
+            fiveHourPercentMode = QuotaPercentMode.USED
+        )).single { it.id == "quota:300" }.text)
+        assertTrue("60% remaining" in AnalyticsPresentation.describe(snapshot, DisplayPreferences(), ZoneOffset.UTC, options))
+
+        val fiveHourTrackers = listOf(PeriodMode.CALENDAR, PeriodMode.ELAPSED, PeriodMode.PROVIDER_FIVE_HOUR).map {
+            tracker(definition.copy(mode = it, amount = 5))
+        }
+        val fiveHourValues = WidgetText.values(snapshot.copy(trackers = fiveHourTrackers), options = options)
+        assertEquals(List(3) { "5h 40.7%|Tokens 2.5M|W 0.7%" }, fiveHourValues.take(3).map { it.text })
+        val aligned = fiveHourTrackers.last()
+        val colored = WidgetText.trackerValue(
+            aligned.copy(definition = aligned.definition.copy(colorByQuotaGoal = true)),
+            now, quotaMetric = quota, fiveHourMetric = QuotaMetricPresentation(BigDecimal(2_500_000), "sample"),
+        )
+        assertEquals(0, assertNotNull(colored.fiveHourColor?.ratio).compareTo(BigDecimal.ONE))
+
+        val unsupported = listOf(definition.copy(amount = 6), definition.copy(unit = SpanUnit.DAY))
+        val periods = WidgetText.values(snapshot.copy(trackers = unsupported.map(::tracker)), options = options)
+        assertTrue(periods.take(2).all { it.text == "Tokens 2.5M|W 0.7%" })
+        assertTrue(definition.copy(unit = SpanUnit.MINUTE, amount = 299).supportsFiveHourShare())
+        assertFalse(definition.copy(unit = SpanUnit.MINUTE, amount = 300).supportsFiveHourShare())
+        assertFalse(definition.copy(amount = 4, mode = PeriodMode.PROVIDER_FIVE_HOUR).supportsFiveHourShare())
+        val missing = WidgetText.values(
+            snapshot.copy(trackers = listOf(tracker(definition))),
+            options = options.copy(fiveHourScope = "missing"),
+        ).first()
+        assertEquals("5h —|Tokens 2.5M|W 0.7%", missing.text)
+        val reset = snapshot.evaluatedAt.plusSeconds(7200)
+        val expired = WidgetText.values(
+            snapshot.copy(evaluatedAt = reset, trackers = listOf(tracker(definition))), options = options,
+        )
+        assertEquals("5h —|Tokens 2.5M|W 0.7%", expired.first().text)
+        assertEquals("unavailable|estimate unavailable", expired.single { it.id == "quota:300" }.text)
+        val weeklyOnly = WidgetText.values(
+            snapshot.copy(trackers = listOf(tracker(definition))),
+            options = options.copy(planProfile = QuotaPlanProfile.CODEX_WEEKLY),
+        ).first()
+        assertEquals("Tokens 2.5M|W 0.7%", weeklyOnly.text)
+    }
+
+    @Test
     fun portableV3RoundTripAndSettingsCopiesPreserveOptions() {
         val definition = TrackerDefinition(showPercentUsed = true, colorByQuotaGoal = true)
         val display = DisplayPreferences(widgetFontSize = 10, allTokenPercentUsed = true)
@@ -213,7 +270,8 @@ class QuotaMetricPresentationTest {
         val value = quota.apply(StatusValue("a", "<Today&>", "2.5M", BigDecimal(2500000)), true, BigDecimal(20), true)
         val text = WidgetAppearance.text(value, java.awt.Color.BLACK)
         assertTrue("&lt;Today&amp;&gt;: <font" in text)
-        assertTrue("2.5M|7.4%" in text)
+        assertTrue("<font color=\"#000000\">|</font>" in text)
+        assertTrue("2.5M|7.4%" in text.replace(Regex("<[^>]+>"), ""))
     }
 
     @Test

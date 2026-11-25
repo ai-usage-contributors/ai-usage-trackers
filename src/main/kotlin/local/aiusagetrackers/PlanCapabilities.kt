@@ -75,7 +75,14 @@ object QuotaEligibility {
             (minutes != 10080 || it.fixedWeek)
     }
 
-    fun budget(plan: PlanCapabilities): Boolean = plan.weekly && plan.illustrativeBudget
+    fun budget(plan: PlanCapabilities, minutes: Int = 10080): Boolean = plan.illustrativeBudget &&
+        plan.pools.any { it.boundary == QuotaBoundaryKind.FIXED_DURATION &&
+            it.duration == Duration.ofMinutes(minutes.toLong()) && it.percentage && it.resetInstant }
+
+    fun resetAligned(plan: PlanCapabilities, minutes: Int): Boolean =
+        if (minutes == 10080) plan.weekly else plan.pools.any {
+            it.boundary == QuotaBoundaryKind.FIXED_DURATION && it.duration == Duration.ofMinutes(minutes.toLong()) && it.resetInstant
+        }
 
     fun interval(pool: QuotaPool, reset: Instant): UsageInterval? =
         if (pool.fixedWeek) UsageInterval(reset.minus(pool.duration!!), reset) else null

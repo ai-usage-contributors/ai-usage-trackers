@@ -16,16 +16,19 @@ data class QuotaBudgetEstimate(
         fun calculate(
             reading: QuotaObservation,
             tokens: Long?,
-            window: ResetWeek?,
+            window: ResetWindow?,
             issues: Set<String> = emptySet()
         ): QuotaBudgetEstimate {
             val p = reading.usage.usedPercent
             val reset = reading.usage.resetsAt?.let(Instant::ofEpochSecond)
+            val label = if (reading.usage.windowMinutes == 300) "Five-hour" else "Weekly"
+            val lowerLabel = label.lowercase()
             val reason = when {
-                reading.discontinuity -> "Reported usage decreased without an established new weekly boundary; estimate invalidated"
-                window == null || window.scheduled -> "Weekly boundary unavailable for this observation"
-                p == null || !p.isFinite() || p < 1 || p > 100 -> "Estimate requires at least 1% reported weekly usage"
-                tokens == null || tokens <= 0 -> "No positive local weekly token usage available for this observation"
+                reading.usage.disabled -> "The provider reports this quota pool as disabled"
+                reading.discontinuity -> "Reported usage decreased without an established new $lowerLabel boundary; estimate invalidated"
+                window == null || window.scheduled -> "$label boundary unavailable for this observation"
+                p == null || !p.isFinite() || p < 1 || p > 100 -> "Estimate requires at least 1% reported $lowerLabel usage"
+                tokens == null || tokens <= 0 -> "No positive local $lowerLabel token usage available for this observation"
                 else -> null
             }
             if (reason != null) return QuotaBudgetEstimate(reading.time, reset, null, p, explanation = reason)
@@ -38,7 +41,7 @@ data class QuotaBudgetEstimate(
                     addAll(window!!.issues); addAll(issues)
                     add(
                         "Approximate budget from cumulative local tokens / observed quota used. " +
-                                "Includes weekends and holidays; missing sources, rounded percentages and changing usage mix can bias this estimate. " +
+                                "Missing sources, rounded percentages and changing usage mix can bias this estimate. " +
                                 "It reflects the average usage mix so far, not a fixed token allowance or a forecast for a newly selected model/mode."
                     )
                 }.joinToString("; ")

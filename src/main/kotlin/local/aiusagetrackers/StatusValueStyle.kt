@@ -6,6 +6,8 @@ import kotlin.math.pow
 
 enum class StatusValueState { AVAILABLE, STALE, UNAVAILABLE, LOADING, EXPIRED }
 
+data class QuotaColorSpan(val start: Int, val length: Int, val ratio: BigDecimal?)
+
 data class StatusValue(
     val id: String, val label: String, val text: String, val raw: BigDecimal? = null,
     val state: StatusValueState = StatusValueState.AVAILABLE, val style: String = "",
@@ -16,6 +18,8 @@ data class StatusValue(
     val palette: String? = null,
     val aboveQuotaMultiplier: String = "2",
     val warningQuotaMultiplier: String = "3",
+    val fiveHourColor: QuotaColorSpan? = null,
+    val neutralRanges: List<IntRange> = emptyList(),
 ) {
     val accessibleText: String get() = "$label: $text" + if (state == StatusValueState.STALE) " (stale)" else ""
     fun displayText(): String =
@@ -24,15 +28,20 @@ data class StatusValue(
 
 /** Compact, portable settings value. Empty means inherit the current IDE theme. */
 data class StatusValueStyle(val base: Color?, val hideLabel: Boolean, val thresholds: List<Pair<BigDecimal, Color>>) {
-    fun color(value: StatusValue, theme: Color): Color {
+    fun color(
+        value: StatusValue,
+        theme: Color,
+        quotaRatio: BigDecimal? = value.quotaGoalRatio,
+        quotaEnabled: Boolean = value.quotaColorEnabled,
+    ): Color {
         value.palette?.let { spec ->
             val palette = UsagePalette.parse(spec)
-            return if (value.state in setOf(StatusValueState.AVAILABLE, StatusValueState.STALE) && value.quotaColorEnabled)
-                value.quotaGoalRatio?.let { palette.color(it, value.aboveQuotaMultiplier, value.warningQuotaMultiplier) } ?: palette.neutral ?: theme
+            return if (value.state in setOf(StatusValueState.AVAILABLE, StatusValueState.STALE) && quotaEnabled)
+                quotaRatio?.let { palette.color(it, value.aboveQuotaMultiplier, value.warningQuotaMultiplier) } ?: palette.neutral ?: theme
             else palette.neutral ?: theme
         }
         if (value.state !in setOf(StatusValueState.AVAILABLE, StatusValueState.STALE)) return theme
-        if (value.quotaColorEnabled) return value.quotaGoalRatio?.let(QuotaMetricPresentation::color) ?: theme
+        if (quotaEnabled) return quotaRatio?.let(QuotaMetricPresentation::color) ?: theme
         return value.raw?.let { raw -> thresholds.lastOrNull { raw >= it.first }?.second } ?: base ?: theme
     }
 

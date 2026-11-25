@@ -19,6 +19,7 @@ private const val PERCENTAGE_LABEL = "Percentage label"
 private const val WEEKLY_QUOTA = "Weekly quota"
 private const val HIDDEN_LABEL_STYLE = "|true|"
 private const val RESET_LABEL = "Reset label"
+private const val REQUEST_FIVE_HOUR_SHARE_HELP = "Show the request's approximate share of the five-hour token budget."
 
 /** Reads cached snapshots only; sample states never start collection. */
 class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : SettingsForm(),
@@ -44,10 +45,15 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
     private val fiveReset = JCheckBox("Show 5h reset")
     private val reportedPools = JCheckBox("Show reported pools with unknown boundary schemes")
     private val estimate = JCheckBox("Estimate weekly token budget")
+    private val fiveEstimate = JCheckBox("Estimate five-hour token budget")
     private val requestPercent = JCheckBox("Show percentage used for Last request")
+    private val requestFivePercent = JCheckBox("Show five-hour percentage used for Last request")
+    private val requestMetrics = TokenMetricSettings(::updatePreview)
     private var display = DisplayPreferences()
     private val warnings = List(4) { JLabel() }
     private val percentMode = JComboBox(QuotaPercentMode.entries.toTypedArray())
+    private val fivePercentMode = JComboBox(QuotaPercentMode.entries.toTypedArray())
+    private var explicitFivePercentMode = false
     private val source = JComboBox<ScopeChoice>()
     private val fiveSource = JComboBox<ScopeChoice>()
     val previewState =
@@ -73,8 +79,10 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         row(
             "Last request percentage",
             requestPercent,
-            "Append its approximate share of the selected weekly token budget, without spaces. Independent of the quota used/remaining setting."
+            "Show the request's approximate share of the selected weekly token budget."
         )
+        row("Last request five-hour share", requestFivePercent, REQUEST_FIVE_HOUR_SHARE_HELP)
+        requestMetrics.addRows(requestSettings)
         fun withWarning(control: JCheckBox, warning: JLabel): JPanel = JPanel(BorderLayout(4, 0)).apply {
             add(control, BorderLayout.CENTER); add(warning, BorderLayout.EAST)
         }
@@ -106,14 +114,18 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         row(RESET_LABEL, fiveHourResetLabel, "Name shown beside the five-hour reset time.")
         addRow(JLabel(RESET_LABEL), styles.getValue(FIVE_HOUR_RESET))
         row("Quota data", fiveSource, "Use the newest reading or choose a specific local source.")
+        row("Five-hour percentage display", fivePercentMode,
+            "Choose used or remaining for the reported five-hour quota and its estimated token count.")
         listOf(source, fiveSource).forEach { combo ->
             combo.renderer = DefaultListCellRenderer().apply { putClientProperty("html.disable", true) }
             combo.addActionListener { if (!updating) refreshAvailability() }
         }
         section("Percentage display")
-        row("Show", percentMode, "Choose used or remaining for reported quota percentages.")
+        row("Weekly and other pools", percentMode, "Choose used or remaining for the weekly quota and other reported pools.")
         section("Token budget estimate")
         row("Weekly budget", estimate, "Estimate from local usage after at least 1% is used.")
+        row("Five-hour budget", fiveEstimate,
+            "Show estimated tokens used or remaining with the five-hour quota after at least 1% is reported used.")
         addRow(JLabel(""), JLabel("An estimate, not a provider allowance. Incomplete logs can affect it."))
         requestSettings.addRow(JLabel("Last request label"), styles.getValue(LAST_REQUEST))
         listOf(
@@ -129,7 +141,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
                 override fun changedUpdate(e: DocumentEvent) = updatePreview()
             })
         }
-        listOf(percentMode, previewState).forEach { it.addActionListener { updatePreview() } }
+        listOf(percentMode, fivePercentMode, previewState).forEach { it.addActionListener { updatePreview() } }
         listOf(
             quota,
             colorWeeklyQuota,
@@ -137,7 +149,9 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
             fiveQuota,
             fiveReset,
             estimate,
+            fiveEstimate,
             requestPercent,
+            requestFivePercent,
             reportedPools
         ).forEach { it.addActionListener { updatePreview() } }
         addHierarchyListener {
@@ -150,6 +164,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
     }
 
     fun validateDraft() {
+        requestMetrics.validateDraft()
         listOf(
             weeklyQuotaLabel,
             weeklyResetLabel,
@@ -167,30 +182,41 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         validateSetting(source) { options().validate() }
     }
 
-    fun options(): AnalyticsDisplayOptions = AnalyticsDisplayOptions(
-        lastRequestLabel = requestLabel.text.trim(),
-        weeklyQuotaLabel = weeklyQuotaLabel.text.trim(),
-        weeklyResetLabel = weeklyResetLabel.text.trim(),
-        fiveHourQuotaLabel = fiveHourQuotaLabel.text.trim(),
-        fiveHourResetLabel = fiveHourResetLabel.text.trim(),
-        showQuota = quota.isSelected,
-        colorWeeklyQuota = colorWeeklyQuota.isSelected,
-        showReset = reset.isSelected,
-        quotaPercentMode = percentMode.selectedItem as QuotaPercentMode,
-        quotaScope = (source.selectedItem as? ScopeChoice)?.id.orEmpty(),
-        showFiveHourQuota = fiveQuota.isSelected,
-        showFiveHourReset = fiveReset.isSelected,
-        fiveHourScope = (fiveSource.selectedItem as? ScopeChoice)?.id.orEmpty(),
-        estimateBudget = estimate.isSelected,
-        lastRequestPercentUsed = requestPercent.isSelected,
-        lastRequestStyle = if (styles.getValue(LAST_REQUEST).isSelected) HIDDEN_LABEL_STYLE else "",
-        weeklyQuotaStyle = if (styles.getValue(WEEKLY_QUOTA).isSelected) HIDDEN_LABEL_STYLE else "",
-        weeklyResetStyle = if (styles.getValue(WEEKLY_RESET).isSelected) HIDDEN_LABEL_STYLE else "",
-        fiveHourQuotaStyle = if (styles.getValue(FIVE_HOUR_QUOTA).isSelected) HIDDEN_LABEL_STYLE else "",
-        fiveHourResetStyle = if (styles.getValue(FIVE_HOUR_RESET).isSelected) HIDDEN_LABEL_STYLE else "",
-        planProfile = selectedPlan(),
-        showReportedPools = reportedPools.isSelected,
-    )
+    fun options(): AnalyticsDisplayOptions {
+        val mode = percentMode.selectedItem as QuotaPercentMode
+        val layout = requestMetrics.value()
+        return AnalyticsDisplayOptions(
+            lastRequestLabel = requestLabel.text.trim(),
+            weeklyQuotaLabel = weeklyQuotaLabel.text.trim(),
+            weeklyResetLabel = weeklyResetLabel.text.trim(),
+            fiveHourQuotaLabel = fiveHourQuotaLabel.text.trim(),
+            fiveHourResetLabel = fiveHourResetLabel.text.trim(),
+            showQuota = quota.isSelected,
+            colorWeeklyQuota = colorWeeklyQuota.isSelected,
+            showReset = reset.isSelected,
+            quotaPercentMode = mode,
+            fiveHourPercentMode = (fivePercentMode.selectedItem as QuotaPercentMode).takeIf { explicitFivePercentMode || it != mode },
+            quotaScope = (source.selectedItem as? ScopeChoice)?.id.orEmpty(),
+            showFiveHourQuota = fiveQuota.isSelected,
+            showFiveHourReset = fiveReset.isSelected,
+            fiveHourScope = (fiveSource.selectedItem as? ScopeChoice)?.id.orEmpty(),
+            estimateBudget = estimate.isSelected,
+            estimateFiveHourBudget = fiveEstimate.isSelected,
+            lastRequestPercentUsed = requestPercent.isSelected,
+            lastRequestFiveHourPercentUsed = requestFivePercent.isSelected,
+            lastRequestMetricOrder = layout.order,
+            lastRequestTokenPrefix = layout.tokenPrefix,
+            lastRequestWeeklyPrefix = layout.weeklyPrefix,
+            lastRequestFiveHourPrefix = layout.fiveHourPrefix,
+            lastRequestStyle = if (styles.getValue(LAST_REQUEST).isSelected) HIDDEN_LABEL_STYLE else "",
+            weeklyQuotaStyle = if (styles.getValue(WEEKLY_QUOTA).isSelected) HIDDEN_LABEL_STYLE else "",
+            weeklyResetStyle = if (styles.getValue(WEEKLY_RESET).isSelected) HIDDEN_LABEL_STYLE else "",
+            fiveHourQuotaStyle = if (styles.getValue(FIVE_HOUR_QUOTA).isSelected) HIDDEN_LABEL_STYLE else "",
+            fiveHourResetStyle = if (styles.getValue(FIVE_HOUR_RESET).isSelected) HIDDEN_LABEL_STYLE else "",
+            planProfile = selectedPlan(),
+            showReportedPools = reportedPools.isSelected,
+        )
+    }
 
     private fun selectedPlan(): QuotaPlanProfile =
         (planProfile.selectedItem as? QuotaPlanProfile)?.also { lastValidPlan = it } ?: lastValidPlan
@@ -218,7 +244,12 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         options.showReset
         fiveQuota.isSelected = options.showFiveHourQuota; fiveReset.isSelected = options.showFiveHourReset
         estimate.isSelected = options.estimateBudget; percentMode.selectedItem = options.quotaPercentMode
+        explicitFivePercentMode = options.fiveHourPercentMode != null
+        fivePercentMode.selectedItem = options.percentMode(300)
+        fiveEstimate.isSelected = options.estimateFiveHourBudget
         requestPercent.isSelected = options.lastRequestPercentUsed
+        requestFivePercent.isSelected = options.lastRequestFiveHourPercentUsed
+        requestMetrics.load(options.lastRequestMetricLayout())
         for ((combo, pin) in listOf(source to options.quotaScope, fiveSource to options.fiveHourScope)) {
             val choice = ScopeChoice(pin, pin.ifEmpty { "Automatic — newest observation" })
             updateSettingsChoices(combo, listOf(choice), choice)
@@ -250,6 +281,11 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         refreshMetricControls(capabilities)
         estimate.isEnabled = QuotaEligibility.budget(capabilities)
         requestPercent.isEnabled = QuotaEligibility.budget(capabilities)
+        fiveEstimate.isEnabled = QuotaEligibility.budget(capabilities, 300)
+        requestMetrics.updateFiveHourAvailability(
+            requestFivePercent, REQUEST_FIVE_HOUR_SHARE_HELP, FIVE_HOUR_PLAN_REQUIRED.takeUnless { fiveEstimate.isEnabled }
+        )
+        fivePercentMode.isEnabled = QuotaEligibility.metric(capabilities, 300, reset = false).enabled
         SettingsHelp.attach(
             estimate, if (estimate.isEnabled) "Estimate a weekly token budget from local usage and quota readings."
             else "Available only for Codex plans covered by the token-budget estimation policy."
@@ -259,7 +295,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
             if (requestPercent.isEnabled) "Show this request's approximate share of the weekly token budget."
             else "Available only for Codex plans covered by the token-budget estimation policy."
         )
-        percentMode.isEnabled = weekly || five || options.showReportedPools
+        percentMode.isEnabled = weekly || options.showReportedPools
         refreshWarnings(data, options, capabilities)
         updatePreview()
     }
@@ -401,9 +437,11 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
                 ),
                 budgetEstimates = mapOf(
                     QuotaPresentation.scope(weekly) to QuotaBudgetEstimate.calculate(
-                        weekly, 70_460_000,
-                        ResetWeekResolver.resolve(weekly, observed)
-                    )
+                        weekly, 70_460_000, ResetWindowResolver.forBudget(weekly)
+                    ),
+                    QuotaPresentation.scope(five) to QuotaBudgetEstimate.calculate(
+                        five, 2_460_000, ResetWindowResolver.forBudget(five)
+                    ),
                 )
             )
         }

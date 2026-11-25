@@ -71,7 +71,7 @@ object SettingsHelp {
         "Status" to "Reports whether source mapping is configured. Sources mapped does not prove successful imports or fresh quota data; inspect Usage Info for those results.",
         "Account / token dataset" to "Count usage from this explicit account. Changing the displayed vendor or account never rebinds the tracker.",
         "Quota pool" to "Use this account's specific quota limit for reset-aligned periods and estimates. A missing selected pool stays unavailable. Account default preserves legacy behavior.",
-        "Period" to "Calendar uses calendar boundaries, Elapsed uses a rolling duration, and Provider week follows the selected quota pool's verified weekly reset. Reset weeks include every day.",
+        "Period" to "Calendar uses calendar boundaries and Elapsed uses a rolling duration. Provider modes follow the selected weekly or five-hour quota reset. The five-hour mode requires Amount 5, Unit Hours, and a quota scheme with a fixed five-hour reset.",
         "Time zone" to "Leave blank for the system zone, or use a region such as Europe/Budapest. Calendar boundaries and daylight-saving changes follow this zone.",
         "Placement" to "Automatic pins single-week, single-day and single-hour trackers. Fixed stays outside the inner ribbon; Ribbon places this tracker inside it.",
         "Percentage used" to "Show the approximate share of an eligible weekly token-budget estimate. Missing estimates show a dash. This is separate from reported quota used/remaining percentages.",

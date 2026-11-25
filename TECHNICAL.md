@@ -1,6 +1,6 @@
 # AI Usage Trackers — technical reference
 
-This describes implementation version **1.1.0**, reviewed on **2026-11-23**.
+This describes implementation version **1.2.0**, reviewed on **2026-11-25**.
 Source links identify the implementation; external links explain terminology and
 provider contracts. Historical release notes describe earlier behavior, not
 additional current features.
@@ -159,7 +159,7 @@ The plugin logo uses the supplied Lucide-based chart drawing, packaged as
 padding. Explicit blue strokes (`#3574F0` light, `#6EC5FF` dark) avoid relying on
 inherited CSS colors. The ISC notice is bundled in `licenses/lucide-ISC.txt`.
 See [JetBrains logo requirements](https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html).
-The current plugin version is **1.1.0**.
+The current plugin version is **1.2.0**.
 
 The package includes third-party notices and capture resources, excluding helper
 tests and Python cache files. Windows is the initial validation environment;
@@ -286,16 +286,15 @@ The synthetic generator does not change collection semantics.
 
 `UsageConsent` stores agreement revision 1 in `aiUsageTrackersConsent.xml` with
 `RoamingType.DISABLED`. Fresh installations and existing settings without this
-revision require explicit agreement. Widget installation requests one modal popup
-per application session when agreement is absent; it offers Agree and Enable,
-Not Now, and an explicit browser link to the repository Privacy Policy. Closing or
-declining does not enable processing. Accepted agreement suppresses future prompts.
-Unit-test mode does not show the dialog. General settings also support granting
-or withdrawing agreement on Apply/OK; Cancel and Reset discard draft changes.
+revision require explicit agreement. Without saved agreement, the status bar shows
+**Review usage agreement** even with no visible vendors. Clicking it opens General
+settings, which contain the disclosure and Privacy Policy link. The widget checks
+agreement during its 250 ms presentation refresh. General settings support granting
+or withdrawing agreement on Apply/OK. Cancel and Reset discard draft changes.
 Agreement is separate from `UsageSettings` and portable configuration.
 
 Without agreement the service starts no account monitors and returns an
-`agreement required` presentation without cached usage. Preview database reads
+`agreement required` snapshot without cached usage. Preview database reads
 and warning acknowledgements are gated too. Revocation hides readings immediately;
 the 250 ms service loop cancels monitors and collection cancellation checkpoints
 also check agreement. In-flight work stops cooperatively, retaining stored history.
@@ -388,6 +387,7 @@ time. Arithmetic or SQLite sum overflow makes the total unavailable with an issu
 | `Calendar periods` | Minute/hour/day/week/month boundaries in the selected zone; weeks start Monday, months on day 1. Amount N includes the current partial unit and N−1 preceding units by default. Disabling current period selects completed units. |
 | `Elapsed duration` | Exactly N minutes, hours, 24-hour days, or 168-hour weeks. Ends at now or the selected calendar boundary, with an optional earlier-boundary offset. Elapsed months are rejected. |
 | `Provider reset-aligned week (all days)` | One current fixed weekly pool. Uses its selected observation and reset; see section 8.2. Zone affects displayed boundaries. |
+| `Provider reset-aligned 5 hours` | One current five-hour quota window. Requires Amount 5, Unit Hours, and an account scheme with a fixed five-hour reset. Uses the selected five-hour observation; see section 8.2. Zone affects displayed boundaries. |
 | Retained legacy schedules | Explicit endpoints, repeating anchors, and non-default daily windows remain readable and retain accounting. The editor locks schedule controls until **Use automatic periods** replaces them with calendar defaults. |
 
 Calendar-day selection can use all days, Monday–Friday, or the latest N dates
@@ -459,26 +459,45 @@ sampled against stored scan metadata and remains fixed between collections;
 evaluation ticks can expire it without inventing a fresh zero-percent balance.
 The current scan-start timestamp discrepancy is recorded in section 12.1.
 
-Provider-week totals can roll forward on schedule even while reported quota is
-expired. A known previous reset may establish the start; otherwise start is
-inferred as reset − 604,800 seconds. After the reset, subsequent seven-day local
-intervals are marked scheduled and awaiting fresh provider evidence.
+Provider-reset trackers use the selected account's quota observation with the
+matching duration. A known previous reset can establish the start within the
+window. Otherwise, the start is inferred as the reset minus 604,800 seconds
+for a week or 18,000 seconds for five hours. At the reported reset, the next
+tracker interval starts. Subsequent intervals are marked scheduled until a
+fresh observation arrives, even while displayed quota readings are expired.
+Missing selected observations make the tracker total unavailable.
 
 ### 8.3 Illustrative estimates and coloring
 
-At a matching weekly observation time, a positive local total `T` and reported
+At a matching weekly or five-hour observation time, a positive local total `T` and reported
 used percentage `p` in `[1, 100]` give `estimated budget = T × 100 / p` using
 `BigDecimal` with `DECIMAL128` precision. Estimated remaining budget is
 `budget × (100 − p) / 100`. Used display pairs the observed used percentage with
 the observed local tokens; remaining display uses estimated remaining tokens.
+Five-hour estimates count events from the previous reset if it falls inside
+the current window, or from the reported reset minus five hours. The start
+and observation instant are included. A missing boundary, disabled pool, or
+observation outside the five-hour window prevents an estimate. After reset,
+the previous estimate expires. Each quota window has its own estimate toggle
+and used/remaining selection. Upgraded profiles initially inherit the former
+shared percentage mode for the five-hour window.
 These are not fixed provider token allowances or predictions for another model.
 An unexplained percentage decrease within the same reset window invalidates
 the estimate. Rounded percentages, missing sources, and changing model/mode mix
 can bias it.
 
-Token metric suffixes use approximate share of the full estimated budget,
-independent of quota used/remaining display: `Today: 2.5M|7.4%`; unavailable
-estimates produce `|—`. Color targets are presentation policy, not usage filters:
+Token metrics divide the tracker or request total by the full estimated budget.
+Five-hour shares apply to eligible trackers set to 1–5 hours or 1–299 minutes,
+including provider reset-aligned five-hour trackers, and to Last request. The entire selected period
+supplies the numerator, including when it crosses a reset. Eligible displays
+use a dash for an unavailable estimate. Each tracker and Last request can
+reorder and prefix its token count, weekly share, and five-hour share, for
+example `2h: 5h 40.7%|Tokens 2.5M|Week 0.7%`. When the five-hour share is
+ineligible, the order choices and prefix field omit it. The share control
+explains the applicable period or quota scheme requirement. Its saved prefix and
+position are restored when eligibility returns. Shares always represent usage,
+regardless of the reported quota's display mode. Color targets are presentation
+policy, not usage filters:
 
 | Tracker unit | Target share of weekly budget |
 | --- | --- |
@@ -494,17 +513,34 @@ weekly pacing enabled for the current provider week,
 `budget × allowance days / 7`. One day is allowed immediately after reset; the
 second begins with less than six days remaining.
 
+`Five-hour tracker colors` is enabled by default. With widget coloring and
+`Color by quota goal` enabled for an eligible tracker, the five-hour segment uses its own goal of
+`100% × tracker minutes / 300`. A two-hour tracker reaches this goal at 40%
+of the estimated five-hour budget. The segment includes its text prefix and
+keeps its color through metric reordering and visible ribbon clipping. A
+missing estimate uses the neutral color. Turning the option off makes this
+segment use the tracker value's shared color. Disabling `Color by quota goal`
+uses the neutral color for the entire tracker. Last request has no duration-based goal.
+
 The shared palette defaults to theme-neutral, green `#00FF00`, yellow `#FFFF00`,
 orange `#FFA500`, and red `#FF0000`. RGB channels interpolate at usage/goal
 multiples 0, 1, above-goal, and warning; defaults are 2 and 3 for the last two.
 Decimal multipliers must satisfy `1 < above < warning`, with at most nine digits
 per integer/fractional part. Ratios beyond warning stay red. Missing targets use
-neutral. Labels keep theme coloring; the operational warning icon is independent.
+neutral. Metric dividers, tracker period boundaries, and clipping marks use
+the neutral palette color. Labels keep theme coloring, and the operational
+warning icon is independent.
 
 Weekly quota coloring is opt-in. Used mode uses `used / 100`; remaining mode
 uses the equivalent depletion ratio `used / 100 × warning multiplier`, making
-full remaining green and none remaining warning-colored. Five-hour quota keeps
-its used-percentage calculation. Disabling the coloring master uses theme text
+full remaining green and none remaining warning-colored. Standalone five-hour
+quota uses `goal = 20% × max(1, 5 − whole hours remaining)` during its reported
+five-hour reset window. The goal starts at 20% and advances immediately after
+each whole-hour boundary, matching weekly pacing's boundary rule. The same
+palette maps `reported percent used / goal` in Used and Remaining display
+modes. In hour one, 20% reaches At goal, 40% reaches Above goal, and 60% reaches
+Warning with the default multipliers. A missing or expired reset uses neutral.
+Disabling the coloring master uses theme text
 colors without clearing saved choices. Legacy threshold styles remain readable,
 but current shared presentation discards their colors while retaining hidden labels.
 
@@ -541,22 +577,29 @@ drafts on **Cancel**, with the local preview-pin exception below.
 | --- | --- |
 | **General — Displayed usage** | **Displayed vendor**, **Multi-vendor carousel**, vendor inclusion boxes, motion mode, speed, independent horizontal/vertical intervals, and vertical direction. |
 | **General — Vendor tracking and widget prefix** | **Configure vendor**, **Track usage**, **Widget prefix**, and **Advanced…**, which opens the same vendor's account/source setup. Editing a vendor is independent of selecting the displayed vendor. |
-| **Trackers — list/editor** | Top toolbar: **Add New**, **Remove**, **Move Up**, **Move Down**, **Duplicate**, **Import**, **Export**; drag handles support reorder. A draggable gray splitter separates the list from the editor. |
+| **Trackers — list/editor** | Top toolbar: **Add New**, **Remove**, **Move Up**, **Move Down**, **Duplicate**, and **Sort Trackers** with shortest-first and longest-first choices. Drag handles support reorder. A draggable gray splitter separates the list from the editor. |
 | **Trackers — Period** | Name; explicit account/token dataset and editable quota-pool selector; amount; unit with equivalence-info button; period type; day selection; current-period inclusion; optional weekly reset alignment for one current calendar day; visibility; minute/hour boundary display; time zone; elapsed ending boundary/offset. Legacy schedule summary/conversion appears where applicable. |
-| **Trackers — Status bar / Period details** | Automatic/Fixed/Ribbon placement, hide label, percentage suffix; expandable background-resolved intervals/totals. Long interval descriptions show the first 20 intervals. |
-| **Trackers — Last request** | Show last request, label, hide label, and approximate percentage suffix. |
+| **Trackers — Status bar / Period details** | Automatic/Fixed/Ribbon placement, hide label, optional weekly and eligible five-hour shares, metric order, and per-metric prefixes. Period details shows background-resolved intervals and totals, up to 20 intervals in long descriptions. |
+| **Trackers — Last request** | Visibility, label, hide label, weekly and five-hour shares, metric order, and per-metric prefixes. |
 | **Quota — account and plan capabilities** | **Quota account**, vendor-specific **Quota scheme**, and display of other pools with unknown boundary schemes. Switching accounts preserves each account's drafts. |
 | **Quota — weekly / five-hour** | Independent percentage visibility, text/hide-label controls, reset visibility/label controls, newest-or-pinned source selectors, and availability warning icons. Unsupported capabilities disable controls; temporary missing/stale data does not erase choices. |
-| **Quota — percentage display / token budget estimate** | Used/remaining selector and opt-in illustrative weekly budget. |
+| **Quota — percentage display / token budget estimate** | Independent used/remaining selectors and opt-in illustrative weekly and five-hour budgets. Other reported pools use the weekly selector. |
 | **Appearance — Status bar layout / Ribbon** | Auxiliary metric pinning, observed average/max entry width, configured ribbon width, automatic widening, scroll mode, relevant speed or interval/direction controls, and bulk token percentage display. |
 | **Appearance — Font / Date and time** | IDE-default or custom font, 8–24 logical-point size, editable date preset/custom pattern, 12/24-hour format, and format sample. |
-| **Appearance — Coloring** | Master switch, weekly quota colors, weekly pacing, eligible tracker goal switches, five palette colors, decimal breakpoints, gradient samples, and palette reset. |
+| **Appearance — Coloring** | Master switch, weekly quota colors and pacing, separate five-hour tracker colors, eligible tracker goal switches, five palette colors, decimal breakpoints, gradient samples, and palette reset. |
 | **Sources — Additional Codex folders** | Multiline extra homes for the original Codex account, alongside automatic discovery. |
 | **Advanced — Accounts and usage sources** | Vendor, account to edit/display, **Add account**, **Remove account**, alias, vendor-specific source paths with folder/file pickers, capture folder with browse, ownership confirmation, configuration status, default-tracker creation, setup instructions, and helper export to an empty folder. Removal requires reassigning/removing bound trackers and preserves the ledger; the original Codex and last account per vendor are protected. Add is disabled at 32 profiles. |
 | **Advanced — Tracker limit** | Maximum tracker count. Existing larger lists raise the initial limit to preserve them; lowering it never deletes trackers automatically. |
+| **Advanced — Settings transfer** | Export the selected tracker or all tracker definitions and optional appearance, vendor labels, and carousel settings. Import previews the file and maps accounts before applying to the draft. |
 
-Provider-week mode hides amount/unit, day-selection, current-period, and elapsed
-controls while retaining zone display settings. Custom font/color subordinate
+Duration sorting includes hidden trackers and keeps the selected tracker and
+the relative order of ties. It uses configured amounts with nominal 24-hour
+days, seven-day weeks, and 30-day months. Legacy explicit periods use the
+duration between their resolved endpoints.
+
+Provider-reset modes hide amount/unit, day-selection, current-period, and elapsed
+controls while retaining zone display settings. Five-hour alignment also keeps
+the option to show hour boundaries. Custom font/color subordinate
 controls and ribbon mode-specific timing rows appear only when applicable.
 No editable custom reset, explicit-date, or repeating-anchor controls are offered
 for new schedules.
@@ -570,7 +613,7 @@ for new schedules.
 | Accounts | At most 32 distinct local profiles; IDs match `[A-Za-z0-9_-]{1,80}`. |
 | Account aliases / widget prefixes / quota labels | Alias and labels 1–80 printable characters; prefix may be blank to use vendor name. Prefixes cannot begin with `<html>` (case-insensitive, after trimming). Existing saved values with that marker are quoted in menus; dynamic labels and metric tooltips render literal text. |
 | Collection | Codex enabled; other vendors disabled. Original Codex source mapping starts confirmed. |
-| Optional metrics | Last request, quota percentages/resets, estimated budget, and token percentage suffixes off. |
+| Optional metrics | Last request, quota percentages/resets, estimated budgets, and token shares off. Metric order defaults to tokens, weekly share, five-hour share, with blank prefixes. |
 | Appearance | IDE font; `yyyy-MM-dd`; 24-hour clock; coloring enabled, weekly quota colors/pacing off. Date patterns are 1–80 characters and must produce readable output. |
 | Inner ribbon | Width 280 logical px (80–1200), speed 30 logical px/s (0–200), Restart, step intervals 3 s each (0–300), Up, automatic widening off. |
 | Outer carousel | Off; Vertical step, Up, intervals 8 s each (0–300), speed 30 (0–200). |
@@ -760,12 +803,16 @@ priority when clicking that shared button.
 uses UTF-8 JSON with format identifier `codex-usage-trackers`. The configuration
 format version is independent of plugin, database, and parser versions.
 The suggested filename is `ai-usage-trackers.json`. Imports accept formats v11
-and v12. An export uses v12 if any tracker has daily weekly reset alignment
-enabled, and v11 otherwise. A v11 import defaults the option to off. Earlier
-plugin versions with v11-only readers cannot import a v12 export.
+through v15. Exports use v15 for provider reset-aligned five-hour trackers.
+Exports use v14 when included appearance settings turn off separate five-hour
+tracker coloring, or v13 when a tracker enables five-hour shares or customizes
+metric order or prefixes. Otherwise, exports use v12 for daily weekly reset
+alignment, or v11 for the remaining settings. Older formats load with defaults for
+settings they do not contain. Account-specific quota and Last request options are
+stored in local settings.
 
 Exports contain tracker definitions and optional appearance/General display
-preferences. Both versions store logical vendor/alias bindings and quota-pool IDs, not
+preferences. Portable files store logical vendor/alias bindings and quota-pool IDs, not
 database account identities. Import explicitly maps bindings to local accounts
 or leaves them unresolved; a missing pool stays unavailable. Optional General import cannot enable collection or install
 callbacks.
@@ -822,6 +869,12 @@ exact installed-artifact identity and individual subvariants were not independen
   by synthetic headless tests alone.
 
 ### 12.2 Development checks and evidence
+
+The signed **1.2.0** candidate passed **283 Gradle tests**, packaging, and
+configuration verification. IntelliJ and SonarQube reported no findings for the
+consent changes. Plugin Verifier 1.411 reported compatibility with IDEA **2026.3**,
+build **263.7307.200**. The testing record identifies the signed archive and
+tracks native acceptance and the Marketplace install check.
 
 The UI defect fixes passed 256 Gradle tests, packaging/configuration, IDEA 2026.3 compatibility verification and changed-file IntelliJ inspections. Native retests verified readable foregrounds across both theme directions and hover shortcut isolation from the focused Project pane. See R2 in the acceptance record for candidate identity and evidence. Plugin Verifier 1.411 is explicitly declared for the build check.
 
@@ -968,6 +1021,7 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 
 | Plugin version | Principal change |
 | --- | --- |
+| 1.2.0 | Provider reset-aligned five-hour trackers, five-hour quota shares and estimates, metric ordering and prefixes, independent tracker share coloring, reset-paced standalone colors, duration sorting, portable v13–v15 settings transfer in Advanced, and user-initiated consent review in place of the startup dialog. |
 | 1.1.0 | Opt-in daily usage rollover at the selected weekly quota reset, with portable configuration support. |
 | 1.0.1 | Guard AWT pointer queries during display changes; pause automatic advancement and defer hover dismissal while unavailable, then recover automatically. Owner-reported local verification; controlled N10 variants remain unexecuted. |
 | 1.0.0 | First 1.0 version; fixed at owner request. Includes public contact details, chart logos, plain-text dynamic labels/tooltips, typed bounded capture, ordered quota transitions, streamed provider imports, account removal/limits, completion-clock scan metadata, experimental Claude/Antigravity labels, theme-resolved widget foreground refresh, IDE-first hover shortcut consumption, and explicit local processing agreement with a first-load popup and privacy link. |

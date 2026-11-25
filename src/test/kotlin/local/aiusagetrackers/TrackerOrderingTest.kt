@@ -5,6 +5,20 @@ import kotlin.test.assertEquals
 
 class TrackerOrderingTest {
     @Test
+    fun sortsConfiguredDurationsInEitherDirectionWithStableTies() {
+        val trackers = listOf(
+            TrackerDefinition(id = "long", name = "A", unit = SpanUnit.HOUR, amount = 25),
+            TrackerDefinition(id = "minutes", name = "Z", unit = SpanUnit.MINUTE, amount = 60, visible = false),
+            TrackerDefinition(id = "hour", unit = SpanUnit.HOUR),
+            TrackerDefinition(id = "day", unit = SpanUnit.DAY),
+            TrackerDefinition(id = "fixed", mode = PeriodMode.FIXED, zoneId = "UTC",
+                fixedStart = "2026-11-24T00:00", fixedEnd = "2026-11-24T00:30"),
+        )
+        assertEquals(listOf("fixed", "minutes", "hour", "day", "long"), TrackerOrdering.sortByDuration(trackers, true).map { it.id })
+        assertEquals(listOf("long", "day", "minutes", "hour", "fixed"), TrackerOrdering.sortByDuration(trackers, false).map { it.id })
+    }
+
+    @Test
     fun previewMovesVisibleTrackersWhileKeepingHiddenSlotsAndIdentities() {
         val trackers = listOf("a", "b", "c", "d").map {
             TrackerDefinition(id = it, name = "Same label", visible = it != "b")

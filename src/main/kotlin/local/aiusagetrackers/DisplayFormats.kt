@@ -1,5 +1,7 @@
 package local.aiusagetrackers
 
+import com.intellij.util.xmlb.SkipDefaultValuesSerializationFilters
+import com.intellij.util.xmlb.annotations.Property
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -45,6 +47,8 @@ data class DisplayPreferences(
     var ribbonVerticalStepDirection: RibbonStepDirection = RibbonStepDirection.UP,
     var ribbonAutoExpand: Boolean = false,
     var coloringEnabled: Boolean = true,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var separateFiveHourColors: Boolean = true,
 ) {
     fun validate() {
         require(fixedAuxiliary.split(",").all { it.isEmpty() || it in setOf("request", "quota:10080", "quota:300", "reset:10080", "reset:300") }) { "Unknown fixed auxiliary metric" }

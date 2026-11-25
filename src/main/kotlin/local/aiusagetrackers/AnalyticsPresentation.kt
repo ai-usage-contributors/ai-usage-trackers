@@ -70,10 +70,11 @@ object AnalyticsPresentation {
         val quota = selection.reading
         if (quota == null) append("• $label quota: unavailable; no provider-reported window for the selected scope\n")
         else {
-            val mode = if (options.quotaPercentMode == QuotaPercentMode.USED) "used" else "remaining"
+            val percentMode = options.percentMode(duration)
+            val mode = if (percentMode == QuotaPercentMode.USED) "used" else "remaining"
             append(
                 "• $label quota: ${
-                    selection.percentage(options.quotaPercentMode)?.let { "$it $mode" } ?: "unavailable"
+                    selection.percentage(percentMode)?.let { "$it $mode" } ?: "unavailable"
                 }\n")
             val reset = quota.usage.resetsAt?.let(Instant::ofEpochSecond)
             append(
@@ -94,41 +95,28 @@ object AnalyticsPresentation {
             }
             append("• Quota observed: ${format.dateTime(quota.time, zone, true)} (${zone.id}); $state\n")
             append("• Quota scope: ${QuotaPresentation.scope(quota)}; account unidentified${if (selection.multipleScopes) "; multiple scopes available in Settings; values are not combined" else ""}\n")
-            appendEstimate(snapshot, options, format, zone, duration, selection, quota)
+            if (options.showsBudgetEstimate(duration)) appendEstimate(snapshot, format, zone, label, selection)
         }
     }
 
     private fun StringBuilder.appendEstimate(
         snapshot: UsageSnapshot,
-        options: AnalyticsDisplayOptions,
         format: DisplayFormats,
         zone: ZoneId,
-        duration: Int,
+        label: String,
         selection: QuotaSelection,
-        quota: QuotaObservation
     ) {
-        if (duration == 10080 && options.estimateBudget && QuotaEligibility.budget(options.capabilities())) {
-            val estimate = snapshot.budgetEstimates[QuotaPresentation.scope(quota)]
-            if (!selection.expired && estimate?.total != null) {
-                append(
-                    "• Estimated weekly token budget: ~${WidgetText.compactDecimal(estimate.total)} tokens; estimated remaining ~${
-                        WidgetText.compactDecimal(
-                            estimate.remaining!!
-                        )
-                    } tokens\n"
-                )
-                append(
-                    "• Estimate inputs: ${estimate.tokens} local tokens and ${estimate.usedPercent}% used, through ${
-                        format.dateTime(
-                            estimate.observedAt,
-                            zone,
-                            true
-                        )
-                    }. Formula: tokens × 100 / percent used.\n"
-                )
-            } else append("• Estimated weekly token budget: unavailable\n")
-            append("• ${estimate?.explanation ?: "Waiting for paired local usage and a weekly observation with at least 1% used"}\n")
+        val estimate = selection.matchingEstimate(snapshot)
+        if (estimate?.total != null) {
+            val total = WidgetText.compactDecimal(estimate.total)
+            val remaining = WidgetText.compactDecimal(estimate.remaining!!)
+            val observedAt = format.dateTime(estimate.observedAt, zone, true)
+            append("• Estimated $label token budget: ~$total tokens; estimated remaining ~$remaining tokens\n")
+            append("• Estimate inputs: ${estimate.tokens} local tokens and ${estimate.usedPercent}% used, through $observedAt. Formula: tokens × 100 / percent used.\n")
+        } else {
+            append("• Estimated $label token budget: unavailable\n")
         }
+        append("• ${estimate?.explanation ?: selection.warning(false) ?: "Waiting for paired local usage and a quota observation with at least 1% used"}\n")
     }
 
     private fun tokens(value: Long): String = "$value (${

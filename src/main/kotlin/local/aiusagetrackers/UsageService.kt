@@ -110,7 +110,12 @@ class UsageService(private val scope: CoroutineScope) {
         }
     }
 
-    fun preview(definition: TrackerDefinition, preferences: DisplayPreferences, callback: (String) -> Unit): Job {
+    fun preview(
+        definition: TrackerDefinition,
+        preferences: DisplayPreferences,
+        draftOptions: AnalyticsDisplayOptions?,
+        callback: (String) -> Unit,
+    ): Job {
         val modality = ModalityState.current()
         return scope.launch(ioDispatcher) {
             val text = try {
@@ -127,7 +132,7 @@ class UsageService(private val scope: CoroutineScope) {
                                 definition,
                                 now,
                                 ZoneId.systemDefault(),
-                                if (profile.id == ProviderProfile.LEGACY_CODEX) settings.analyticsDisplay else profile.analytics
+                                draftOptions ?: if (profile.id == ProviderProfile.LEGACY_CODEX) settings.analyticsDisplay else profile.analytics
                             ) { context.ensureActive() }, now, preferences
                         )
                     }
@@ -156,7 +161,7 @@ internal class UsageMonitor(
     private val allowed: () -> Boolean = { true },
 ) {
     private class CompletedAnalytics {
-        var key: Pair<Instant?, Long>? = null
+        var key: Triple<Instant?, Long, QuotaPlanProfile>? = null
         var analytics = UsageAnalytics()
         var budgets: Map<String, QuotaBudgetEstimate> = emptyMap()
     }
@@ -227,18 +232,16 @@ internal class UsageMonitor(
                                         val now = clock.instant()
                                         val selectedZone = zone()
                                         val trackers = definitions().map { it.copy() }
+                                        val options = analyticsOptions()
                                         mutableSnapshots.value = reader.readSnapshot {
                                             val collection = reader.collection()
-                                            val refreshKey = collection.lastCompleted to completedScans.value
+                                            val refreshKey = Triple(collection.lastCompleted, completedScans.value, options.planProfile)
                                             if (completed.key != refreshKey) {
                                                 completed.analytics =
                                                     collection.lastCompleted?.let(reader::analytics) ?: UsageAnalytics()
-                                                completed.budgets =
-                                                    if (QuotaEligibility.budget(analyticsOptions().capabilities()))
-                                                        reader.budgetEstimates(
-                                                            completed.analytics,
-                                                            collection.operationalIssues
-                                                        ) else emptyMap()
+                                                completed.budgets = reader.budgetEstimates(
+                                                    completed.analytics, collection.operationalIssues, options.capabilities()
+                                                )
                                                 completed.key = refreshKey
                                             }
                                             val analytics = completed.analytics
@@ -248,7 +251,7 @@ internal class UsageMonitor(
                                                     reader.evaluate(
                                                         tracker,
                                                         now,
-                                                        selectedZone, analyticsOptions()
+                                                        selectedZone, options
                                                     ) { context.ensureActive() }
                                                 } catch (failure: IllegalArgumentException) {
                                                     TrackerResult(

@@ -7,6 +7,7 @@ import java.awt.datatransfer.Transferable
 import java.awt.datatransfer.UnsupportedFlavorException
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneOffset
 import javax.swing.*
@@ -24,6 +25,7 @@ class TrackerWidgetPreview(private val move: (String, Int) -> Unit) : JPanel(Bor
     private var definitions = emptyList<TrackerDefinition>()
     private var preferences = DisplayPreferences()
     private var quotaApplicable = true
+    private var fiveHourApplicable = false
     private var planLabel = "Codex"
     private var active: Drag? = null
     private var closed = false
@@ -131,10 +133,12 @@ class TrackerWidgetPreview(private val move: (String, Int) -> Unit) : JPanel(Bor
             )
         }
         val applicable = QuotaEligibility.budget(capabilities)
-        if (definitions == copies && preferences == normalized && quotaApplicable == applicable && planLabel == label) return
+        val fiveHour = QuotaEligibility.budget(capabilities, 300)
+        if (definitions == copies && preferences == normalized && quotaApplicable == applicable &&
+            fiveHourApplicable == fiveHour && planLabel == label) return
         definitions = copies
         preferences = normalized
-        quotaApplicable = applicable; planLabel = label
+        quotaApplicable = applicable; fiveHourApplicable = fiveHour; planLabel = label
         revision++
         // Invalidated drags keep their geometry until release, but can no longer commit.
         if (active == null) render()
@@ -146,15 +150,17 @@ class TrackerWidgetPreview(private val move: (String, Int) -> Unit) : JPanel(Bor
         row.add(JLabel("$planLabel:").apply { putClientProperty("html.disable", true) })
         val now = Instant.parse("2026-11-04T12:00:00Z")
         val quota = QuotaMetricPresentation(
-            java.math.BigDecimal("16621621.6216216216"),
+            BigDecimal("16621621.6216216216"),
             "Synthetic weekly budget for this preview.",
             reset = now.plusSeconds((sampleHours.value as Number).toLong() * 3600),
             evaluatedAt = now,
             applicable = quotaApplicable
         )
+        val fiveHour = QuotaMetricPresentation(BigDecimal("6150000"), "Synthetic five-hour budget for this preview.",
+            applicable = fiveHourApplicable)
         for (definition in definitions.filter { it.visible }) {
             if (labels.isNotEmpty()) row.add(JLabel("·"))
-            val label = sampleLabel(definition, sampleValue(definition, now, quota))
+            val label = sampleLabel(definition, sampleValue(definition, now, quota, fiveHour))
             labels += label
             row.add(label)
         }
@@ -167,12 +173,13 @@ class TrackerWidgetPreview(private val move: (String, Int) -> Unit) : JPanel(Bor
         definition: TrackerDefinition,
         now: Instant,
         quota: QuotaMetricPresentation,
+        fiveHour: QuotaMetricPresentation,
     ): StatusValue {
         val period = ResolvedPeriod(listOf(UsageInterval(now.minusSeconds(3600), now)), ZoneOffset.UTC)
         val total = if (sampleState.selectedIndex == 1) null else 1_230_000L
-        val value = WidgetText.trackerValue(TrackerResult(definition, period, total), now, preferences, quota)
+        val value = WidgetText.trackerValue(TrackerResult(definition, period, total), now, preferences, quota, fiveHour)
         return if (sampleState.selectedIndex == 2) {
-            value.copy(text = "loading", raw = null, state = StatusValueState.LOADING)
+            value.copy(text = "loading", raw = null, state = StatusValueState.LOADING, fiveHourColor = null, neutralRanges = emptyList())
         } else value
     }
 

@@ -43,6 +43,8 @@ data class TrackerConfiguration(
 object TrackerConfigurationJson {
     const val MAX_BYTES = 1_048_576
     private const val DAILY_RESET_FIELD = "resetDailyAtWeeklyReset"
+    private const val FIVE_HOUR_COLORS_FIELD = "separateFiveHourColors"
+    private val metricFields = setOf("showFiveHourPercentUsed", "metricOrder", "tokenPrefix", "weeklyPrefix", "fiveHourPrefix")
     private val stringFields = setOf("name", "zoneId", "startTime", "endTime", "anchor", "fixedStart", "fixedEnd")
     private val booleanFields = setOf("includeCurrent", "visible", "showPeriodStart")
     private val trackerFields =
@@ -61,7 +63,13 @@ object TrackerConfigurationJson {
 
     fun encode(configuration: TrackerConfiguration): String {
         require(configuration.trackers.size <= 32) { "At most 32 trackers can be exported" }
-        val version = if (configuration.trackers.any { it.resetDailyAtWeeklyReset }) 12 else 11
+        val version = when {
+            configuration.trackers.any { it.mode == PeriodMode.PROVIDER_FIVE_HOUR } -> 15
+            configuration.display?.separateFiveHourColors == false -> 14
+            configuration.trackers.any(::hasCustomMetrics) -> 13
+            configuration.trackers.any { it.resetDailyAtWeeklyReset } -> 12
+            else -> 11
+        }
         val root = JsonObject().apply {
             addProperty("format", "codex-usage-trackers")
             addProperty("version", version)
@@ -84,6 +92,7 @@ object TrackerConfigurationJson {
                     addProperty("ribbonWidth", it.ribbonWidth)
                     addProperty("ribbonAutoExpand", it.ribbonAutoExpand)
                     addProperty("coloringEnabled", it.coloringEnabled)
+                    if (!it.separateFiveHourColors) addProperty(FIVE_HOUR_COLORS_FIELD, false)
                     addProperty("ribbonSpeed", it.ribbonSpeed)
                     addProperty("ribbonScrollMode", key(it.ribbonScrollMode))
                     addProperty("ribbonHorizontalStepIntervalSeconds", it.ribbonHorizontalStepIntervalSeconds)
@@ -162,8 +171,18 @@ object TrackerConfigurationJson {
             addProperty("colorByQuotaGoal", t.colorByQuotaGoal)
             addProperty("hideLabel", t.hideLabel)
             addProperty("ribbonPlacement", key(t.ribbonPlacement))
+            if (hasCustomMetrics(t)) {
+                addProperty("showFiveHourPercentUsed", t.showFiveHourPercentUsed)
+                addProperty("metricOrder", key(t.metricOrder))
+                addProperty("tokenPrefix", t.tokenPrefix)
+                addProperty("weeklyPrefix", t.weeklyPrefix)
+                addProperty("fiveHourPrefix", t.fiveHourPrefix)
+            }
         }
     }
+
+    private fun hasCustomMetrics(tracker: TrackerDefinition): Boolean =
+        tracker.showFiveHourPercentUsed || tracker.metricLayout() != TokenMetricLayout()
 
     private fun decodeBindings(root: JsonObject): List<PortableAccountBinding> {
         return root.get("bindings")?.let { value ->
@@ -224,20 +243,16 @@ object TrackerConfigurationJson {
         bindings: List<PortableAccountBinding>,
         version: Int,
     ): List<TrackerDefinition> {
+        val allowedFields = buildSet {
+            addAll(trackerFields)
+            addAll(listOf("style", "showPercentUsed", "colorByQuotaGoal", "hideLabel", "ribbonPlacement", "account", "quotaPool"))
+            if (version >= 12) add(DAILY_RESET_FIELD)
+            if (version >= 13) addAll(metricFields)
+        }
         return array.asJsonArray.mapIndexed { index, value ->
             try {
                 val obj = value.objectValue()
-                obj.only(
-                    trackerFields + setOf(
-                        "style",
-                        "showPercentUsed",
-                        "colorByQuotaGoal",
-                        "hideLabel",
-                        "ribbonPlacement",
-                        "account",
-                        "quotaPool"
-                    ) + if (version == 12) setOf(DAILY_RESET_FIELD) else emptySet()
-                )
+                obj.only(allowedFields)
                 TrackerDefinition(
                     name = obj.string("name"),
                     quotaPoolId = obj.string("quotaPool", ""),
@@ -245,7 +260,11 @@ object TrackerConfigurationJson {
                     accountId = decodeAccount(obj, bindings),
                     amount = obj.integer("amount"),
                     unit = obj.enumValue("unit"),
-                    mode = obj.enumValue("mode"),
+                    mode = obj.enumValue<PeriodMode>("mode").also {
+                        require(it != PeriodMode.PROVIDER_FIVE_HOUR || version >= 15) {
+                            "Provider reset-aligned five-hour tracking requires configuration version 15"
+                        }
+                    },
                     selection = obj.enumValue("selection", DaySelection.ALL),
                     includeCurrent = obj.boolean("includeCurrent", true),
                     visible = obj.boolean("visible", true),
@@ -260,6 +279,11 @@ object TrackerConfigurationJson {
                     endOffset = obj.integer("endOffset", 0),
                     style = obj.string("style", ""),
                     showPercentUsed = obj.boolean("showPercentUsed", false),
+                    showFiveHourPercentUsed = obj.boolean("showFiveHourPercentUsed", false),
+                    metricOrder = obj.enumValue("metricOrder", TokenMetricOrder.TOKENS_WEEKLY_FIVE_HOUR),
+                    tokenPrefix = obj.string("tokenPrefix", ""),
+                    weeklyPrefix = obj.string("weeklyPrefix", ""),
+                    fiveHourPrefix = obj.string("fiveHourPrefix", ""),
                     colorByQuotaGoal = obj.boolean("colorByQuotaGoal", false),
                     hideLabel = obj.boolean("hideLabel", false),
                     ribbonPlacement = obj.enumValue("ribbonPlacement", RibbonPlacement.AUTOMATIC),
@@ -288,9 +312,9 @@ object TrackerConfigurationJson {
         }
     }
 
-    private fun decodeDisplay(root: JsonObject): DisplayPreferences? {
+    private fun decodeDisplay(root: JsonObject, version: Int): DisplayPreferences? {
         return root.get("display")?.objectValue()?.let {
-            it.only(displayFields())
+            it.only(displayFields(version))
             DisplayPreferences(
                 it.string("datePattern"),
                 it.enumValue("clockFormat"),
@@ -308,20 +332,22 @@ object TrackerConfigurationJson {
                 it.integer("ribbonVerticalStepIntervalSeconds", 3),
                 it.enumValue("ribbonVerticalStepDirection", RibbonStepDirection.UP),
                 it.boolean("ribbonAutoExpand", false),
-                it.boolean("coloringEnabled", true)
+                it.boolean("coloringEnabled", true),
+                it.boolean(FIVE_HOUR_COLORS_FIELD, true),
             ).also { display ->
                 display.validate()
             }
         }
     }
 
-    private fun displayFields(): Set<String> = buildSet {
+    private fun displayFields(version: Int): Set<String> = buildSet {
         addAll(setOf("datePattern", "clockFormat"))
         addAll(setOf("widgetFontSize", "allTokenPercentUsed"))
         addAll(setOf("weeklyPacing", "palette"))
         add("ribbonScrollMode")
         add("ribbonAutoExpand")
         add("coloringEnabled")
+        if (version >= 14) add(FIVE_HOUR_COLORS_FIELD)
         addAll(
             setOf(
                 "ribbonHorizontalStepIntervalSeconds",
@@ -339,11 +365,11 @@ object TrackerConfigurationJson {
         root.only(setOf("format", "version", "trackers", "display", "bindings", "general"))
         require(root.string("format") == "codex-usage-trackers") { "Not an AI Usage Trackers configuration" }
         val version = root.integer("version")
-        require(version == 11 || version == 12) { "Unsupported configuration version" }
+        require(version in 11..15) { "Unsupported configuration version" }
         val bindings = decodeBindings(root)
         val general = decodeGeneral(root)
         val trackers = decodeTrackers(trackerArray(root), bindings, version)
-        val display = decodeDisplay(root)
+        val display = decodeDisplay(root, version)
         return TrackerConfiguration(trackers, display, bindings, general)
     }
 

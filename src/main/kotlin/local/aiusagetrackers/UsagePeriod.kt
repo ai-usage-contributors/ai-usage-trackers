@@ -22,10 +22,11 @@ enum class SpanUnit(val label: String) {
     override fun toString() = label
 }
 
-enum class PeriodMode(val label: String) {
+enum class PeriodMode(val label: String, val resetWindowMinutes: Int? = null) {
     CALENDAR("Calendar periods"), ELAPSED("Elapsed duration"), REPEATING("Repeating from anchor"), FIXED("Explicit start and end"), PROVIDER_WEEK(
-        "Provider reset-aligned week (all days)"
-    );
+        "Provider reset-aligned week (all days)", 10080
+    ),
+    PROVIDER_FIVE_HOUR("Provider reset-aligned 5 hours", 300);
 
     override fun toString() = label
 }
@@ -70,7 +71,31 @@ data class TrackerDefinition(
     var quotaPoolId: String = "",
     @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
     var resetDailyAtWeeklyReset: Boolean = false,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var showFiveHourPercentUsed: Boolean = false,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var metricOrder: TokenMetricOrder = TokenMetricOrder.TOKENS_WEEKLY_FIVE_HOUR,
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var tokenPrefix: String = "",
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var weeklyPrefix: String = "",
+    @get:Property(filter = SkipDefaultValuesSerializationFilters::class)
+    var fiveHourPrefix: String = "",
 ) {
+    fun metricLayout(): TokenMetricLayout = TokenMetricLayout(metricOrder, tokenPrefix, weeklyPrefix, fiveHourPrefix)
+
+    fun hasFiveHourDuration(): Boolean = unit == SpanUnit.HOUR && amount == 5
+
+    fun supportsFiveHourShare(): Boolean = when (mode) {
+        PeriodMode.FIXED, PeriodMode.PROVIDER_WEEK -> false
+        PeriodMode.PROVIDER_FIVE_HOUR -> hasFiveHourDuration()
+        else -> when (unit) {
+            SpanUnit.MINUTE -> amount in 1..299
+            SpanUnit.HOUR -> amount in 1..5
+            else -> false
+        }
+    }
+
     fun fixedInWidget(): Boolean = when (ribbonPlacement) {
         RibbonPlacement.FIXED -> true
         RibbonPlacement.RIBBON -> false
@@ -134,11 +159,15 @@ class UsagePeriodResolver {
         require(definition.quotaPoolId.length <= 256 && definition.quotaPoolId.none(Char::isISOControl)) { "Invalid quota pool binding" }
         require(definition.name.isNotBlank()) { "Give the tracker a name" }
         StatusValueStyle.parse(definition.style)
+        definition.metricLayout().validate()
         require(
             definition.mode != PeriodMode.PROVIDER_WEEK ||
                     (definition.unit == SpanUnit.WEEK && definition.amount == 1 && definition.includeCurrent)
         ) {
             "Provider reset-aligned tracking requires one current week"
+        }
+        require(definition.mode != PeriodMode.PROVIDER_FIVE_HOUR || (definition.hasFiveHourDuration() && definition.includeCurrent)) {
+            "Provider reset-aligned five-hour tracking requires five hours and the current period"
         }
         require(definition.amount in 1..1000) { "Amount must be between 1 and 1000" }
         require(definition.endOffset in 0..1000) { "Boundary offset must be between 0 and 1000" }
@@ -170,12 +199,12 @@ class UsagePeriodResolver {
         activeDates: (TrackerDefinition, ZoneId, Instant) -> List<LocalDate> = { _, _, _ -> emptyList() },
     ): ResolvedPeriod {
         validate(definition)
-        require(definition.mode != PeriodMode.PROVIDER_WEEK) { "Select a weekly quota observation in Analytics settings; provider context is required" }
+        require(definition.mode.resetWindowMinutes == null) { "Select a quota observation in Quota settings; provider context is required" }
         val zone = definition.zoneId.takeIf(String::isNotBlank)?.let(ZoneId::of) ?: systemZone
         val local = now.atZone(zone)
         val time = LocalTime.parse(definition.startTime)
         return when (definition.mode) {
-            PeriodMode.PROVIDER_WEEK -> error("Provider context required")
+            PeriodMode.PROVIDER_WEEK, PeriodMode.PROVIDER_FIVE_HOUR -> error("Provider context required")
             PeriodMode.FIXED -> rangeResult(
                 LocalDateTime.parse(definition.fixedStart).atZone(zone),
                 LocalDateTime.parse(definition.fixedEnd).atZone(zone),

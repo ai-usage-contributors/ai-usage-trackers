@@ -1,5 +1,67 @@
 NATIVE UI ACCEPTANCE PLAN
-CURRENT CANDIDATE: 1.1.0. The owner reports the new setting works (N11
+CURRENT CANDIDATE: 1.2.0. N12–N14 and the previous 48 scenarios are planned
+for IDEA 2026.3. Include a fresh install and an upgrade from 1.1.0.
+See native-ui-testing.txt for the candidate record.
+
+N09 - Unattended startup and local usage agreement: install the candidate in a
+clean IDEA 2026.3 profile and open a Java project that triggers SDK setup. Leave
+it unattended until setup completes. Verify no consent dialog appears and no
+usage database is created. Open Review usage agreement from the status bar,
+including with no visible vendors, and verify that the Privacy Policy link and
+Cancel leave processing off. Apply agreement, verify collection, restart,
+then withdraw and verify open usage popups close, collection stops, and history
+is retained. Repeat on upgrade with and without saved agreement. Rerun Marketplace install-plugin-test
+on the candidate and check for the consent warning from build 408564.
+
+N12 - Five-hour quota shares and metric layout: use a synthetic Codex
+account with distinct weekly and five-hour quota observations and known
+token deltas. Enable both shares for a two-hour tracker and Last request.
+Verify 299 minutes, four hours, and five hours are eligible, then switch
+to 300 minutes, six hours, a day, a week, and a weekly-only scheme. Check that Metric order
+and the prefix rows omit 5h %, and that the disabled Five-hour share label
+and control explain the applicable period or plan requirement. Restore an
+eligible period and scheme and check the saved five-hour order and prefix.
+Reorder metrics and add
+prefixes with spaces and literal markup. Compare both previews and the
+widget, including unavailable and expired estimates. Independently
+change weekly and five-hour used/remaining modes, including the estimated
+token suffix. Exercise keyboard navigation, tooltips and accessible
+descriptions, Apply/Cancel, restart, portable v13 round-trip, and v11/v12
+import defaults. Record candidate identity and actual environment.
+
+N12 coloring variants: with a two-hour tracker, check that 40% five-hour
+share reaches At goal independently of its weekly color. Disable Color by
+quota goal for that tracker and check that all its metrics use neutral.
+Set a custom neutral color and verify that metric dividers use it, including
+the divider before a standalone quota estimate. Reorder metrics
+and narrow the ribbon until the percentage clips. Verify its color in
+the preview and widget, fallback for missing estimates, the default-on
+Appearance option, the global coloring switch, and v14 export/import with
+the separate color switched off. For standalone quota, use known reports
+at the start and across hour boundaries. In the first hour, 20%, 40%, and
+60% used should reach At goal, Above goal, and Warning under the default
+palette. Check both Used and Remaining, a missing or expired reset, and
+custom palette and multipliers.
+
+N13 - Provider reset-aligned five-hour tracker: with a synthetic Codex
+account and distinct weekly and five-hour observations, verify the Period
+option is offered at five hours on a supported scheme. Check four hours,
+six hours, 300 minutes, and a weekly-only scheme. Select the five-hour
+period, confirm its start in the preview and widget, and verify that the
+event at the reset belongs to the new interval. Check an unavailable
+selected scope, scheduled rollover before a fresh reading, the tracker
+zone, Apply/Cancel, restart, and a portable v15 round-trip. Verify the
+Period tooltip and accessible description. Enable Five-hour share and confirm
+that 100% of the five-hour budget reaches At goal with separate tracker colors.
+
+N14 - Tracker duration sorting and settings transfer: create mixed units,
+amounts, an equal-duration pair, and a hidden tracker. Sort shortest first and
+longest first and verify selection, stable ties, preview order, and Apply/Cancel.
+In Advanced, verify help for Import Settings and Export Settings. Check that
+export supports both selected and all trackers and is disabled for an empty
+list. Verify optional content and the import preview, merge, replace, and cancel.
+
+PREVIOUS CANDIDATE: 1.1.0. The owner reports the new setting works (N11
 USER-PASS). Controlled N11 variants and the full 48-scenario replay are
 NOT RUN. Include fresh install and upgrade from 1.0.1 under IDEA 2026.3.
 Earlier candidate observations below are historical.
@@ -32,7 +94,7 @@ in scope for fresh installation and upgrade from 1.0.0.
 The remaining plan preserves previous run context and stable scenario IDs.
 
 HISTORICAL 1.0.0 PLAN CONTEXT (retained for replay and earlier run evidence)
-New candidate scenario N09: first-load agreement and public metadata links.
+Historical 1.0.0 scenario N09: first-load agreement and public metadata links.
 The candidate inventory is now 46 scenarios; prior 45-scenario results remain historical.
 Test fresh/upgraded profiles, popup policy link without agreement, Not Now and window
 close, Agree and Enable, restart persistence, one prompt across project windows,

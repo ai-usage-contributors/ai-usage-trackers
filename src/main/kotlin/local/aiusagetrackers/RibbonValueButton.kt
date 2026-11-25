@@ -56,10 +56,16 @@ internal class RibbonValueButton(
                 length = plain.offsetByCodePoints(length, -1)
             }
             val fullLabel = if (value.displayText() == value.text) "" else "${value.label}: "
-            val visible = (plain.take(length) + "…").removePrefix(prefix)
-            shortened = if (fullLabel.isNotEmpty() && visible.startsWith(fullLabel))
-                value.copy(text = visible.removePrefix(fullLabel))
-            else value.copy(label = "", text = visible)
+            val visible = plain.take(length).removePrefix(prefix)
+            val amountVisible = length >= prefix.length && visible.startsWith(fullLabel)
+            shortened = if (amountVisible) {
+                val amount = visible.removePrefix(fullLabel)
+                val span = value.fiveHourColor?.takeIf { it.start < amount.length }
+                    ?.let { it.copy(length = minOf(it.length, amount.length - it.start)) }
+                val neutral = value.neutralRanges.filter { it.first < amount.length }
+                    .map { it.first..minOf(it.last, amount.lastIndex) }
+                value.copy(text = "$amount…", fiveHourColor = span, neutralRanges = neutral + listOf(amount.length..amount.length))
+            } else value.copy(label = "", text = "$visible…", fiveHourColor = null, neutralRanges = listOf(0..visible.length))
         }
         putClientProperty("html.disable", !WidgetAppearance.usesHtml(shortened))
         text = WidgetAppearance.text(shortened, theme, prefix)

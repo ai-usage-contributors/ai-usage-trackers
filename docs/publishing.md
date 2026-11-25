@@ -60,8 +60,9 @@ Before submission:
 - Link the [Privacy Policy](../PRIVACY.md) from the Marketplace listing using its
   public repository URL after publication. It describes local-only usage processing,
   storage, retention, exports and deletion. A published policy does not replace
-  in-plugin consent under the approval guidelines. The first-load popup now requires
-  explicit agreement before local processing; General settings support withdrawal.
+  in-plugin consent under the approval guidelines. The status-bar action opens
+  General settings. Local processing requires explicit agreement, which users can
+  withdraw from the same page.
 
 - MIT is selected. The plugin metadata retains AI Usage Trackers contributors as
   vendor, with public email ai.usage.contributors@gmail.com.

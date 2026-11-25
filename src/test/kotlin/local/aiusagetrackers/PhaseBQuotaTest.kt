@@ -84,6 +84,51 @@ class PhaseBQuotaTest {
     }
 
     @Test
+    fun fiveHourTrackerUsesItsQuotaScopeAndStartsAtTheExactResetAfterRestart() {
+        val home = temp.newFolder().toPath()
+        val source = Files.createDirectories(home.resolve("sessions")).resolve("reset-five-hours.jsonl")
+        val fiveStart = at.minusSeconds(3 * 3600)
+        val fiveReset = at.plusSeconds(2 * 3600)
+        Files.writeString(
+            source, listOf(
+                TestLogs.meta(),
+                TestLogs.event(100, fiveStart.minusNanos(1).toString()),
+                TestLogs.event(110, fiveStart.toString()),
+                TestLogs.event(120, at.toString()), quota(),
+                TestLogs.event(130, fiveReset.minusNanos(1).toString()),
+                TestLogs.event(180, fiveReset.toString()),
+            ).joinToString("\n")
+        )
+        val path = home.resolve("usage.sqlite")
+        val tracker = TrackerDefinition(
+            unit = SpanUnit.HOUR, amount = 5, mode = PeriodMode.PROVIDER_FIVE_HOUR, zoneId = "Europe/Budapest",
+        )
+        val options = AnalyticsDisplayOptions(quotaScope = "unavailable-week")
+        UsageDatabase(path).use { database ->
+            CodexUsageCollector(database).collect(Discovery(setOf(home), emptySet()), at)
+            val result = database.evaluate(tracker, at, ZoneOffset.UTC, options)
+            assertEquals(20L, result.total)
+            assertEquals(UsageInterval(fiveStart, fiveReset), result.period.intervals.single())
+            assertEquals(ZoneId.of("Europe/Budapest"), result.period.zone)
+            assertEquals(30L, database.evaluate(tracker, fiveReset.minusNanos(1), ZoneOffset.UTC, options).total)
+            val missing = options.copy(fiveHourScope = "unavailable-five-hour")
+            assertNull(database.evaluate(tracker, at, ZoneOffset.UTC, missing).total)
+            assertEquals(20L, database.evaluate(tracker.copy(quotaPoolId = "codex"), at, ZoneOffset.UTC, missing).total)
+            assertNull(database.evaluate(
+                tracker, at, ZoneOffset.UTC, options.copy(planProfile = QuotaPlanProfile.CODEX_WEEKLY)
+            ).total)
+        }
+        Files.delete(source)
+        UsageDatabase(path).use { database ->
+            val atReset = database.evaluate(tracker, fiveReset, ZoneOffset.UTC, options)
+            assertEquals(50L, atReset.total)
+            assertEquals(UsageInterval(fiveReset, fiveReset.plusSeconds(5 * 3600)), atReset.period.intervals.single())
+            assertTrue(atReset.issues.any { "Scheduled five-hour rollover" in it })
+            assertTrue(PeriodPresentation.endsNow(atReset, atReset.period.intervals.single(), fiveReset))
+        }
+    }
+
+    @Test
     fun optedInDailyTotalRestartsAtWeeklyResetAndResumesCalendarBoundaries() {
         val home = temp.newFolder().toPath()
         val source = Files.createDirectories(home.resolve("sessions")).resolve("day.jsonl")
@@ -175,7 +220,8 @@ class PhaseBQuotaTest {
             CodexUsageCollector(database).collect(Discovery(setOf(home), emptySet()), at.plusSeconds(120))
             val analytics = database.analytics(at.plusSeconds(120))
             val estimates = database.budgetEstimates(analytics, emptySet())
-            val estimate = estimates.values.single()
+            val weekly = analytics.quotaObservations.single { it.usage.windowMinutes == 10080 }
+            val estimate = estimates.getValue(QuotaPresentation.scope(weekly))
             assertEquals(70_460_000, estimate.tokens)
             assertEquals(0, estimate.total!!.compareTo("352300000".toBigDecimal()))
             assertEquals(0, estimate.remaining!!.compareTo("281840000".toBigDecimal()))
@@ -196,22 +242,54 @@ class PhaseBQuotaTest {
     }
 
     @Test
+    fun fiveHourEstimateCountsFromResetWindowStartThroughObservation() {
+        val home = temp.newFolder().toPath()
+        val source = Files.createDirectories(home.resolve("sessions")).resolve("five-hour-estimate.jsonl")
+        val fiveStart = at.minusSeconds(3 * 3600)
+        Files.writeString(
+            source, listOf(
+                TestLogs.meta(),
+                TestLogs.event(10_000, fiveStart.minusNanos(1).toString()),
+                TestLogs.event(11_000, fiveStart.toString()),
+                TestLogs.event(14_000, at.toString()),
+                quota(),
+                TestLogs.event(15_000, at.plusNanos(1).toString()),
+            ).joinToString("\n")
+        )
+        UsageDatabase(home.resolve("usage.sqlite")).use { database ->
+            val completed = at.plusSeconds(120)
+            CodexUsageCollector(database).collect(Discovery(setOf(home), emptySet()), completed)
+            val analytics = database.analytics(completed)
+            val five = analytics.quotaObservations.single { it.usage.windowMinutes == 300 }
+            val estimate = database.budgetEstimates(analytics, emptySet()).getValue(QuotaPresentation.scope(five))
+            assertEquals(4_000L, estimate.tokens)
+            assertEquals(0, assertNotNull(estimate.total).compareTo("10000".toBigDecimal()))
+            assertEquals(0, assertNotNull(estimate.remaining).compareTo("6000".toBigDecimal()))
+            assertFalse(QuotaPresentation.scope(five) in database.budgetEstimates(analytics, emptySet(), PlanCapabilities.CODEX_WEEKLY))
+            assertNull(ResetWindowResolver.forBudget(five.copy(time = fiveStart.minusNanos(1))))
+            assertNull(ResetWindowResolver.forBudget(five.copy(time = at.plusSeconds(7200))))
+            val withPreviousReset = five.copy(previousReset = fiveStart.plusSeconds(60).epochSecond)
+            assertEquals(fiveStart.plusSeconds(60), ResetWindowResolver.forBudget(withPreviousReset)?.interval?.start)
+        }
+    }
+
+    @Test
     fun percentageEligibilityAndObservedPriorResetControlEstimate() {
         for (p in listOf(null, 0.0, 0.999, Double.NaN, 101.0)) {
             val q = reading(p)
-            assertNull(QuotaBudgetEstimate.calculate(q, 100, ResetWeekResolver.resolve(q, at)).total)
+            assertNull(QuotaBudgetEstimate.calculate(q, 100, ResetWindowResolver.resolve(q, at)).total)
         }
         for ((p, budget) in listOf(1.0 to "10000", 20.0 to "500", 100.0 to "100")) {
             val q = reading(p)
-            val estimate = QuotaBudgetEstimate.calculate(q, 100, ResetWeekResolver.resolve(q, at))
+            val estimate = QuotaBudgetEstimate.calculate(q, 100, ResetWindowResolver.resolve(q, at))
             assertEquals(0, estimate.total!!.compareTo(budget.toBigDecimal()))
         }
-        assertNull(QuotaBudgetEstimate.calculate(reading(), 0, ResetWeekResolver.resolve(reading(), at)).total)
+        assertNull(QuotaBudgetEstimate.calculate(reading(), 0, ResetWindowResolver.resolve(reading(), at)).total)
         val established = reading().copy(previousReset = start.plusSeconds(3600).epochSecond)
-        val week = assertNotNull(ResetWeekResolver.resolve(established, at))
+        val week = assertNotNull(ResetWindowResolver.resolve(established, at))
         assertFalse(week.inferred)
         assertEquals(start.plusSeconds(3600), week.interval.start)
-        assertNull(ResetWeekResolver.resolve(reading().copy(usage = reading().usage.copy(resetsAt = null)), at))
+        assertNull(ResetWindowResolver.resolve(reading().copy(usage = reading().usage.copy(resetsAt = null)), at))
     }
 
     @Test
@@ -239,7 +317,8 @@ class PhaseBQuotaTest {
             assertEquals("primary", selected.usage.window)
             assertEquals(10080, selected.usage.windowMinutes)
             assertTrue(selected.discontinuity)
-            assertNull(database.budgetEstimates(analytics, emptySet()).values.single().total)
+            val scope = QuotaPresentation.scope(selected)
+            assertNull(database.budgetEstimates(analytics, emptySet()).getValue(scope).total)
             Files.writeString(
                 source,
                 Files.readString(source) + "\n" + quota(at.plusSeconds(120), "5", end.plusSeconds(7200), true)
@@ -249,7 +328,7 @@ class PhaseBQuotaTest {
                 database.budgetEstimates(
                     database.analytics(at.plusSeconds(120)),
                     emptySet()
-                ).values.single().total
+                    ).getValue(scope).total
             )
         }
     }

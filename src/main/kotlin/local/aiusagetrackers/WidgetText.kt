@@ -1,6 +1,7 @@
 package local.aiusagetrackers
 
 import java.math.BigDecimal
+import java.math.MathContext
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
@@ -35,8 +36,17 @@ object WidgetText {
         if (snapshot.loading) {
             add(StatusValue("state", "", "loading", state = StatusValueState.LOADING)); return@buildList
         }
+        addTrackerValues(snapshot, preferences, options)
+        if (showLastRequest) add(lastRequestValue(snapshot, preferences, options))
+        for (duration in listOf(10080, 300)) addWindow(snapshot, options, duration)
+    }.map { styledValue(it, preferences, options) }
+
+    private fun MutableList<StatusValue>.addTrackerValues(
+        snapshot: UsageSnapshot,
+        preferences: DisplayPreferences,
+        options: AnalyticsDisplayOptions,
+    ) {
         val visible = snapshot.trackers.filter { it.definition.visible }
-        val quotaMetric = QuotaMetricPresentation.select(snapshot, options)
         when {
             snapshot.collection.homes == 0 && snapshot.storedEvents == 0L -> add(
                 StatusValue(
@@ -54,23 +64,22 @@ object WidgetText {
                         it,
                         snapshot.evaluatedAt,
                         preferences,
-                        QuotaMetricPresentation.forTracker(snapshot, options, it.definition)
+                        QuotaMetricPresentation.forTracker(snapshot, options, it.definition),
+                        if (it.definition.showFiveHourPercentUsed && it.definition.supportsFiveHourShare())
+                            QuotaMetricPresentation.forTracker(snapshot, options, it.definition, 300) else null,
                     )
                 )
             }
         }
-        if (showLastRequest) add(lastRequestValue(snapshot, preferences, options, quotaMetric))
-        for (duration in listOf(10080, 300)) addWindow(snapshot, options, duration)
-    }.map { styledValue(it, preferences, options) }
+    }
 
     private fun lastRequestValue(
         snapshot: UsageSnapshot,
         preferences: DisplayPreferences,
         options: AnalyticsDisplayOptions,
-        quotaMetric: QuotaMetricPresentation,
     ): StatusValue {
         val total = snapshot.analytics.lastRequest?.usage?.counters?.total
-        return quotaMetric.apply(
+        return QuotaMetricPresentation.select(snapshot, options).apply(
             StatusValue(
                 "request",
                 options.lastRequestLabel,
@@ -79,7 +88,10 @@ object WidgetText {
                 if (total == null) StatusValueState.UNAVAILABLE else StatusValueState.AVAILABLE,
                 options.lastRequestStyle
             ),
-            preferences.allTokenPercentUsed || options.lastRequestPercentUsed
+            preferences.allTokenPercentUsed || options.lastRequestPercentUsed,
+            layout = options.lastRequestMetricLayout(),
+            fiveHour = if (options.lastRequestFiveHourPercentUsed)
+                QuotaMetricPresentation.select(snapshot, options, 300) else null,
         )
     }
 
@@ -135,32 +147,34 @@ object WidgetText {
         val weekly = duration == 10080
         val shown = if (weekly) options.showQuota else options.showFiveHourQuota
         if (!shown || !QuotaEligibility.metric(options.capabilities(), duration, reset = false).enabled) return
-        val percent = reading.percentage(options.quotaPercentMode)
-        val estimate = budgetEstimate(snapshot, reading)
-        val showEstimate = weekly && options.estimateBudget && QuotaEligibility.budget(options.capabilities())
+        val mode = options.percentMode(duration)
+        val percent = reading.percentage(mode)
+        val used = reading.reading?.usage?.usedPercent?.let(BigDecimal::valueOf)
+        val pacingGoal = if (!weekly && percent != null) reading.fiveHourGoalPercent() else null
+        val showEstimate = options.showsBudgetEstimate(duration)
+        val estimate = reading.matchingEstimate(snapshot)
         val amount = if (showEstimate) {
-            estimate?.amount(options.quotaPercentMode)?.let { "|~${compactDecimal(it)}" } ?: "|estimate unavailable"
+            estimate?.takeIf { it.total != null }?.amount(mode)?.let { "|~${compactDecimal(it)}" } ?: "|estimate unavailable"
         } else ""
+        val percentText = percent ?: "unavailable"
         add(
             StatusValue(
                 "quota:$duration",
                 if (weekly) options.weeklyQuotaLabel else options.fiveHourQuotaLabel,
-                (percent ?: "unavailable") + amount,
-                reading.reading?.usage?.usedPercent?.let(BigDecimal::valueOf),
+                percentText + amount,
+                used,
                 if (percent == null) StatusValueState.UNAVAILABLE else state,
                 if (weekly) options.weeklyQuotaStyle else options.fiveHourQuotaStyle,
                 listOfNotNull(reading.warning(false), estimate?.explanation).joinToString(" "),
+                quotaGoalRatio = pacingGoal?.let { used?.divide(it, MathContext.DECIMAL128) },
                 warnings = listOfNotNull(
                     reading.warning(false),
-                    if (showEstimate && estimate == null) "Weekly token budget estimate unavailable" else null
-                )
+                    if (showEstimate && estimate?.total == null)
+                        estimate?.explanation ?: "${if (weekly) "Weekly" else "Five-hour"} token budget estimate unavailable" else null
+                ),
+                neutralRanges = if (amount.isEmpty()) emptyList() else listOf(percentText.length..percentText.length)
             )
         )
-    }
-
-    private fun budgetEstimate(snapshot: UsageSnapshot, reading: QuotaSelection): QuotaBudgetEstimate? {
-        return reading.reading?.let { snapshot.budgetEstimates[QuotaPresentation.scope(it)] }
-            ?.takeIf { !reading.expired && it.total != null && it.observedAt == reading.reading.time && it.usedPercent == reading.reading.usage.usedPercent }
     }
 
     private fun MutableList<StatusValue>.addReset(
@@ -205,7 +219,7 @@ object WidgetText {
             aboveQuotaMultiplier = preferences.aboveQuotaMultiplier,
             warningQuotaMultiplier = preferences.warningQuotaMultiplier,
             quotaColorEnabled = preferences.coloringEnabled && (value.id != "quota:10080" || options.colorWeeklyQuota),
-            quotaGoalRatio = value.raw?.divide(BigDecimal(100))?.let { used ->
+            quotaGoalRatio = if (value.id == "quota:300") value.quotaGoalRatio else value.raw?.divide(BigDecimal(100))?.let { used ->
                 if (value.id == "quota:10080" && options.quotaPercentMode == QuotaPercentMode.REMAINING)
                     used.multiply(preferences.warningQuotaMultiplier.toBigDecimal()) else used
             })
@@ -225,6 +239,7 @@ object WidgetText {
             null,
             "No estimated weekly token budget available."
         ),
+        fiveHourMetric: QuotaMetricPresentation? = null,
     ): StatusValue {
         val range =
             if (result.definition.unit in setOf(SpanUnit.MINUTE, SpanUnit.HOUR) && result.definition.showPeriodStart)
@@ -232,18 +247,23 @@ object WidgetText {
         val value = StatusValue(
             result.definition.id,
             result.definition.name,
-            range + (result.total?.let(::compact) ?: "unavailable"),
+            result.total?.let(::compact) ?: "unavailable",
             result.total?.toBigDecimal(),
             if (result.total == null) StatusValueState.UNAVAILABLE else StatusValueState.AVAILABLE,
             if (result.definition.hideLabel || StatusValueStyle.forDisplay(result.definition.style).hideLabel) "|true|" else "",
             result.issues.joinToString("; ")
         )
-        return quotaMetric.tracker(value, result.definition, preferences)
-            .let { if (preferences.coloringEnabled) it else it.copy(quotaColorEnabled = false) }.copy(
-                palette = if (preferences.coloringEnabled) preferences.palette else null,
-                aboveQuotaMultiplier = preferences.aboveQuotaMultiplier,
-                warningQuotaMultiplier = preferences.warningQuotaMultiplier
-            )
+        val arranged = quotaMetric.tracker(value, result.definition, preferences, fiveHourMetric)
+        return arranged.copy(
+            text = range + arranged.text,
+            fiveHourColor = arranged.fiveHourColor?.let { it.copy(start = it.start + range.length) },
+            neutralRanges = if (range.isEmpty()) arranged.neutralRanges else
+                listOf(range.indices) + arranged.neutralRanges.map { (it.first + range.length)..(it.last + range.length) },
+            quotaColorEnabled = preferences.coloringEnabled && arranged.quotaColorEnabled,
+            palette = if (preferences.coloringEnabled) preferences.palette else null,
+            aboveQuotaMultiplier = preferences.aboveQuotaMultiplier,
+            warningQuotaMultiplier = preferences.warningQuotaMultiplier,
+        )
     }
 
     fun trackerText(
@@ -304,7 +324,7 @@ object PeriodPresentation {
             PeriodMode.ELAPSED -> result.definition.endAnchor == EndAnchor.NOW && interval.end == now
             PeriodMode.CALENDAR, PeriodMode.REPEATING -> result.definition.includeCurrent && interval.end > now
             PeriodMode.FIXED -> interval.end > now
-            PeriodMode.PROVIDER_WEEK -> interval.end > now
+            PeriodMode.PROVIDER_WEEK, PeriodMode.PROVIDER_FIVE_HOUR -> interval.end > now
         }
 
     fun describe(
@@ -433,7 +453,7 @@ object DisclaimersText {
         append("\n• Sources: this account's configured local usage logs and sanitized vendor reports. Coverage depends on the supported client/capture path; missing clients are not inferred. No model calls, billing API or collection telemetry.\n")
         append("• Cached input is included. These are locally recorded token totals, not account-wide usage or billing costs. Period totals do not retain separate counter breakdowns; request observations retain reported breakdowns where available.\n")
         append("• Last request means one recorded model response, not a full prompt or turn. Response records provide identity; older reports require a clean cumulative-counter cross-check and remain labeled as legacy evidence. Missing identity, resets, malformed data or newer unverified activity can leave only a last-known reading.\n")
-        append("• Weekly quota is a provider-reported seven-day allowance snapshot, separate from the Monday calendar tracker and token totals. Choose used or remaining percentage in Settings. Freshness, expiry and reset duration are sampled at completed collection; the duration stays fixed between collections. Values older than 15 minutes are stale; a passed reset makes the reading unavailable until a new observation. Refresh Now rereads local logs and does not contact the provider.\n")
+        append("• Weekly and five-hour quotas show provider-reported usage for their respective windows. Choose used or remaining for each in Settings. The reset countdown stays fixed between collections. Values older than 15 minutes are stale, and a passed reset makes the reading unavailable until a new observation. Refresh Now rereads local logs without contacting the provider.\n")
         append("• Logs may not identify the quota account. Such observations remain separate by source session and bucket; percentages are never summed. Optional token budgets are estimates, not provider allowances. Reset timestamps use the provider's instant, displayed in the current system zone.\n")
         append("• Imported history is retained when logs disappear. Logs deleted before import cannot be recovered; a stored zero does not certify complete coverage.\n")
         append("• Ambiguous copies, conflicting histories and recognized forks are conservatively excluded and reported in Usage Info. Malformed records, counter resets and missing sources can leave coverage incomplete.\n")

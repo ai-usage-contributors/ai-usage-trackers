@@ -29,7 +29,15 @@ class UsageWidgetFactory : StatusBarWidgetFactory {
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }
 
-class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposable {
+class UsageWidget internal constructor(
+    private val project: Project,
+    private val agreementAccepted: () -> Boolean,
+    private val openSettings: () -> Unit
+) : CustomStatusBarWidget, Disposable {
+    constructor(project: Project) : this(project, { service<UsageConsent>().accepted }, {
+        ShowSettingsUtil.getInstance().showSettingsDialog(project, UsageConfigurable::class.java)
+    })
+
     private val views = linkedMapOf<UsageVendor, VendorUsageWidget>()
     private val carousel = VendorCarousel().apply {
         transitionChanged = { active -> views.values.forEach { it.pauseForTransition(active) } }
@@ -37,14 +45,25 @@ class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposa
     private val root = JPanel(java.awt.BorderLayout()).apply { isOpaque = false; add(carousel) }
     private var timer: Timer? = null
     private var disposed = false
+    private val reviewAgreement = settingsButton("Review usage agreement").apply {
+        SettingsHelp.attach(this, "Open General settings to review the local usage agreement. Processing is off until you agree and apply.")
+    }
+    private val noVendors = settingsButton("No vendors enabled — Settings")
     override fun ID() = "CodexDailyTokens"
     override fun getComponent(): JComponent = root
     override fun install(statusBar: StatusBar) {
-        service<UsageConsent>().requestAgreement(project)
         update(); timer = Timer(250) { if (!disposed) update() }.also { it.start() }
     }
 
     private fun update() {
+        if (!agreementAccepted()) {
+            showComponent(reviewAgreement)
+            if (views.isNotEmpty()) {
+                carousel.configure(emptyMap(), VendorDisplayState())
+                disposeViews()
+            }
+            return
+        }
         val config = service<UsageSettings>().providers
         val visible = config.display.visible(config.eligible())
         for (vendor in visible) views.getOrPut(vendor) {
@@ -53,23 +72,33 @@ class UsageWidget(private val project: Project) : CustomStatusBarWidget, Disposa
         carousel.paused =
             { views.values.any { it.hasOpenPopup() } || MenuSelectionManager.defaultManager().selectedPath.isNotEmpty() }
         carousel.configure(visible.associateWith { views.getValue(it).component }, config.display)
-        if (visible.isEmpty()) {
-            if (root.getComponent(0) === carousel) {
-                root.removeAll(); root.add(JButton("No vendors enabled — Settings").apply {
-                    addActionListener {
-                        ShowSettingsUtil.getInstance().showSettingsDialog(project, UsageConfigurable::class.java)
-                    }
-                }); root.revalidate(); root.repaint()
-            }
-        } else if (root.getComponent(0) !== carousel) {
-            root.removeAll(); root.add(carousel); root.revalidate(); root.repaint()
-        }
+        showComponent(if (visible.isEmpty()) noVendors else carousel)
+    }
+
+    private fun settingsButton(label: String) = JButton(label).apply {
+        addActionListener { if (!disposed && !project.isDisposed) openSettings() }
+    }
+
+    private fun showComponent(component: JComponent) {
+        if (root.getComponent(0) === component) return
+        root.removeAll()
+        root.add(component)
+        root.revalidate()
+        root.repaint()
+    }
+
+    private fun disposeViews() {
+        views.values.forEach { Disposer.dispose(it) }
+        views.clear()
     }
 
     override fun dispose() {
         disposed = true
-        val cleanup =
-            Runnable { timer?.stop(); carousel.close(); views.values.forEach { Disposer.dispose(it) }; views.clear() }
+        val cleanup = Runnable {
+            timer?.stop()
+            carousel.close()
+            disposeViews()
+        }
         if (SwingUtilities.isEventDispatchThread()) cleanup.run() else ApplicationManager.getApplication()
             .invokeLater(cleanup)
     }

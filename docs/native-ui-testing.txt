@@ -1,5 +1,259 @@
 NATIVE UI TESTING RECORD - GIVEN / WHEN / THEN
-Maintained: 2026-11-23 | Next planned plugin version: 1.1.0
+Maintained: 2026-11-25 | Next planned plugin version: 1.2.0
+
+1.2.0 CANDIDATE — SONARQUBE COMPLEXITY FIXES
+
+Given an edited tracker or a rendered usage widget, when period hints and
+tracker values are calculated, then the settings and displayed values behave
+as before. The unattended startup and consent expectations in N09 still apply.
+
+Built and signed on 2026-11-25 on Windows from 536c3a16817134ec8437c69b7e66285193e3f9bb
+plus the local 1.2.0 changes. SHA256 of sorted changed source/test/build path
+and hash rows (including untracked source files and DELETED markers):
+9D47AC687AB0CF5D1CA98EBB9302DF6E86AAD6B1A1DF74B34A72EC65E8CC3A1F
+Unsigned ai-usage-trackers-1.2.0.zip SHA256:
+B49C4AC5F27C7BCE9B8495A6D99EDF457648B36E6060F7BE495EED2CF84C2873
+Signed ai-usage-trackers-1.2.0-signed.zip SHA256:
+5F3B1ED14BB2A69E25FD470EE94DB65A1E277F9E4250B323DC393FA61DA2EAA3
+
+Automated results: 283 Gradle tests passed. Packaging, configuration and
+Plugin Verifier 1.411 passed for IDEA 2026.3 / IU-263.7307.200. The SonarQube
+rescan of the pending supported files found zero issues. IntelliJ reported no
+findings in the two refactored files. ZIP Signer 0.1.45 verified the signature
+against the existing release certificate. All five ZIP payload entries match.
+
+Native status: NOT RUN. Marketplace rerun: PENDING.
+
+1.2.0 CANDIDATE — N09 UNATTENDED STARTUP AND LOCAL USAGE AGREEMENT
+
+Given a clean profile or an upgrade without agreement, when the IDE opens a
+Java project requiring SDK setup, then setup finishes without an automatic
+consent dialog and the plugin creates no usage database. Given a user opens
+Review usage agreement, when the user applies agreement, then collection may
+start. Cancel and opening the Privacy Policy keep processing off. Saved consent
+survives upgrade and restart. Withdrawal stops collection and retains history.
+Given the patched ZIP, when Marketplace runs install-plugin-test, then the
+consent warning from build 408564 is absent.
+
+Candidate built and signed on 2026-11-25 on Windows. Source snapshot:
+536c3a16817134ec8437c69b7e66285193e3f9bb plus the local 1.2.0 changes.
+SHA256 of sorted changed source/test/build path and hash rows (including
+untracked source files and DELETED markers for removals):
+130156FE46AE805B34CC1552BD47A1426CB10FBCADD9DD3BA36B6A7B57062E4C
+Unsigned ai-usage-trackers-1.2.0.zip SHA256:
+9F9109C3E975B23020557B237C3176930AE81DB4D3B2BBDBA9C2B19C3FFA038C
+Signed ai-usage-trackers-1.2.0-signed.zip SHA256:
+4216A3565B8F851F3A9C4C92B2BCD4A2C2E953EA29A33068BA9E0985662E4637
+
+Automated results: 283 Gradle tests passed with zero failures, errors or skips.
+Packaging and configuration verification passed. Plugin Verifier 1.411
+reported Compatible with IDEA 2026.3 / IU-263.7307.200. IntelliJ and SonarQube
+reported no findings in the files checked for the consent change. ZIP Signer
+0.1.45 verified the signature with the existing release certificate, and all
+five signed ZIP entries match the tested unsigned payload.
+
+Native status: NOT RUN. Marketplace rerun: PENDING.
+
+1.2.0 ADVANCED TRANSFER CANDIDATE — N14
+Target: IntelliJ IDEA 2026.3. Scope: N12–N14 and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: BCFF4C1DC2BB9CBECB1FD0C519EC12A2BC203D27886A17F5314EB97D6F1EBA1B
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows, with removed files marked DELETED, is
+9668DF45E66177D9C9B566143DF237ACF5BD5CF9EF713975776EA2EBEF230DB1.
+Automated validation on 2026-11-24: 282 Gradle tests passed with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the changed Kotlin file.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: an empty draft, a draft with a selected tracker, and a
+portable file with optional display settings.
+Given: a selected tracker in the draft.
+When: the user opens Advanced and starts Export Settings.
+Then (expected): import and export controls are together with accessible
+content help. Export offers selected or all trackers. It is disabled for an
+empty list, and both controls are disabled during a file transfer.
+Observed: pending. The earlier N14 sort and transfer expectations still apply
+with both controls in Advanced.
+
+1.2.0 EARLIER TRACKER ORDER AND TRANSFER CANDIDATE — N14
+Target: IntelliJ IDEA 2026.3. Scope: N12–N14 and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: E9E12CEFE45B35F32368FF360D22E66BC33DB94DB97859101EF2952028DD1A87
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows, with removed files marked DELETED, is
+EEB00BE530302F1D6DD6BDBDCA06C2B8E775251FA212BB0E060D15C83F174245.
+Automated validation on 2026-11-24: 282 Gradle tests passed with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the files changed for this revision.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: mixed tracker durations, an equal-duration pair, one hidden
+tracker, and portable tracker configuration with optional display settings.
+Given: a draft with mixed tracker durations and a selected tracker.
+When: the user sorts in either direction, exports, then opens Advanced and
+imports a portable configuration.
+Then (expected): the sort preserves selection and stable ties. Export and
+Import Settings explain which settings are transferred. Import previews and
+supports merge, replace, and cancel. Apply saves the resulting draft.
+Observed: pending.
+
+1.2.0 FULL FIVE-HOUR SHARE CANDIDATE — N12 AND N13 ELIGIBILITY
+Target: IntelliJ IDEA 2026.3. Scope: updated N12, N13, and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: 19AC9A7C94AE5C5FD9914810D85E7EC4EF238C7169C9E634A55D247DEED60A74
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows, with removed files marked DELETED, is
+ED8765235542E19823B7B781748CAF834EC785C5F48BF740900B7692ED5B4640.
+Automated validation on 2026-11-24: 281 Gradle tests passed with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the files changed for this revision.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixture planned: a supported Codex five-hour quota and five-hour trackers.
+Given: a tracker with Unit Hours and Amount 5.
+When: the user enables Five-hour share in calendar, elapsed, or provider
+reset-aligned mode and checks the settings preview and widget.
+Then (expected): the share, order, and prefix controls are available, and the
+widget displays the estimated share. With separate colors enabled, a share
+of 100% reaches At goal. Six hours and 300 minutes are ineligible.
+Observed: pending.
+
+1.2.0 EARLIER RESET-ALIGNED FIVE-HOUR CANDIDATE — N13
+Target: IntelliJ IDEA 2026.3. Scope: N12, N13, and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: 9E8E10A662996C197097FCBC1F3725C0C596C512946FBA2DAE209216027A2822
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows, with removed files marked DELETED, is
+CC02F3EFF44217972E96FF58B45E219A6BEF0523EE0AE021E253BDA197ABCAFC.
+Automated validation on 2026-11-24: 281 Gradle tests passed with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the files changed for this revision.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: a synthetic Codex account with separate weekly and
+five-hour limits, a known reset, and known token deltas around the reset.
+Given: a tracker with five hours and a supported five-hour quota scheme.
+When: the user selects provider reset-aligned five hours, checks the preview
+and widget across the reset, changes scope, saves, restarts, and exports/imports.
+Then (expected): the choice is offered for five hours only. The reset event
+belongs to the new interval, and the next interval is marked scheduled while
+a fresh report is pending. An unavailable selected scope shows an unavailable
+total. The v15 round-trip preserves the mode, and the label and control explain
+the eligibility requirement.
+Observed: pending.
+
+1.2.0 PER-TRACKER COLOR CANDIDATE — N12 COLOR SWITCH AND NEUTRAL DIVIDERS
+Target: IntelliJ IDEA 2026.3. Scope: updated N12 and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: 9634F4689CECE1CBCAB5429F0400F57A9703D573F99A6BDF844984327543D0DB
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows is FA12AD444E7C3FECFD09EBEB33EB69BC558FA2694FD7960234815C3BADAAC519.
+Automated validation on 2026-11-24: 278 Gradle tests passed with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the files changed for this revision.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: a two-hour tracker with visible token and quota metrics,
+custom neutral palette color, and a standalone five-hour quota with an estimate.
+Given: independent five-hour coloring enabled, with a distinct neutral color.
+When: the user toggles Color by quota goal for the tracker, reorders metrics,
+and clips the value in the ribbon.
+Then (expected): all tracker metrics use neutral with its switch off. With the
+switch on, each metric uses its assigned color and dividers remain neutral.
+Standalone quota dividers also use neutral. The earlier N12 expectations apply.
+Observed: pending.
+
+1.2.0 EARLIER COLORING CANDIDATE — N12 FIVE-HOUR TRACKER AND QUOTA COLORS
+Target: IntelliJ IDEA 2026.3. Scope: updated N12 and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: DC740104E4040E1DDB072DCC3986BD50CA664B2AEBF1516C8EDDC3D7BD6AC5D8
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes. The SHA256 of the sorted changed source/test/build path and
+file-hash rows is AAF64E5E5874163F4A602866DE36DE291F8AF2CCEEBF4C02D318FA015A87C0BB.
+Automated validation on 2026-11-24: 278 Gradle tests passed, with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the files changed for this revision.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: a two-hour tracker with independently chosen weekly and
+five-hour percentages, plus five-hour quota reports with known reset times.
+Given: a timed tracker whose five-hour share is visible, and a standalone
+five-hour quota with a valid reset.
+When: the user changes coloring options, the metric order, the ribbon width,
+and the quota display mode, then crosses a whole-hour reset boundary.
+Then (expected): the two-hour tracker reaches the separate five-hour At goal
+color at 40% usage when the default-on appearance option is enabled. The
+standalone quota starts at a 20% goal, advances by 20 percentage points after
+each whole-hour boundary, and colors from usage in both display modes. Missing
+data uses neutral, and disabling coloring restores theme colors. The earlier
+N12 expectations below still apply.
+Observed: pending.
+
+1.2.0 METRIC ORDER CANDIDATE — N12 FIVE-HOUR METRIC ORDER ELIGIBILITY
+Target: IntelliJ IDEA 2026.3. Scope: revised N12 and the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: 99663BFF6B31C9BF87E50BAB8F325E52FD4F12AD5B2AD479D90DD77B352DFDE6
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+1.2.0 changes, including the metric order eligibility fix. The SHA256 of the
+sorted changed source/test/build path and file-hash rows is
+8915CC4BC0E68579757C4897F989DEA165653EC3E4679056377DF1817F3FBA7B.
+Automated validation on 2026-11-24: 275 Gradle tests passed. IntelliJ
+inspections reported no issues in the files changed for this revision.
+Packaging and configuration verification passed. Plugin Verifier 1.411
+reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: synthetic Codex observations for the weekly and five-hour
+windows, with an eligible two-hour tracker and an ineligible weekly tracker.
+Given: a saved five-hour prefix and order on the two-hour tracker.
+When: the tracker changes to five hours or a week, or the account changes to a
+weekly-only scheme, and then the duration and scheme become eligible again.
+Then (expected): Metric order shows only token and weekly share orders while
+the five-hour share is ineligible, and the five-hour prefix row is hidden. The
+disabled share label and control identify the duration or scheme requirement.
+Eligibility restores the saved five-hour prefix and position. Last request
+follows quota scheme eligibility. The earlier N12 expectations below still apply.
+Observed: pending.
+
+1.2.0 EARLIER CANDIDATE — N12 FIVE-HOUR QUOTA SHARES AND METRIC LAYOUT
+Target: IntelliJ IDEA 2026.3. Scope: N12 and replay of the previous 48 scenarios.
+Unsigned ZIP: ai-usage-trackers-1.2.0.zip
+SHA256: 8D76FE25524DC1224B9313366314C326CA228542F1A079322ACA9DB93A7A6E89
+Source snapshot: 536c3a16817134ec8437c69b7e66285193e3f9bb plus the local
+five-hour quota and metric layout implementation. The SHA256 of the sorted
+changed source/test/build path and file-hash rows is
+4F209B9BE363084DCDBA8F12215454C74B42AC780790F4AB8C29B259A4917E11.
+Automated validation on 2026-11-24: 273 Gradle tests passed, with zero
+failures, errors or skips. Packaging and configuration verification passed.
+Plugin Verifier 1.411 reported Compatible with IDEA 2026.3 / IU-263.7307.200.
+IntelliJ inspections reported no issues in the changed source, tests, build
+script and plugin descriptor.
+Native status: NOT RUN. Execution date, IDE build, OS, display/input setup,
+and observations are pending. Native execution requires explicit authorization.
+Fixtures planned: synthetic Codex account with weekly and five-hour reports,
+known token deltas and a request, plus v11 and v12 portable configurations.
+Given: an eligible account and a two-hour tracker with both quota shares enabled.
+When: the user reorders and prefixes metrics, switches period and plan eligibility,
+changes the five-hour display mode and estimate, and exercises preview, Apply,
+Cancel, restart, and export/import.
+Then (expected): only eligible trackers and Last request can show the five-hour
+share. The widget and preview honor order and literal prefixes. The provider
+percentage and estimated token suffix use the selected five-hour mode. Missing
+or expired estimates are explained. v13 preserves tracker choices, older imports
+use defaults, and labels and controls expose matching accessible help.
+Observed: pending. Earlier candidate results remain historical evidence.
 
 1.1.0 CANDIDATE — N11 DAILY USAGE AT WEEKLY RESET
 
