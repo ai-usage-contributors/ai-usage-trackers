@@ -23,10 +23,10 @@ enum class SpanUnit(val label: String) {
 }
 
 enum class PeriodMode(val label: String, val resetWindowMinutes: Int? = null) {
-    CALENDAR("Calendar periods"), ELAPSED("Elapsed duration"), REPEATING("Repeating from anchor"), FIXED("Explicit start and end"), PROVIDER_WEEK(
-        "Provider reset-aligned week (all days)", 10080
+    CALENDAR("Calendar periods"), ELAPSED("Elapsed duration"), REPEATING("Repeat from a start time"), FIXED("Explicit start and end"), PROVIDER_WEEK(
+        "Follow the weekly quota reset (all days)", 10080
     ),
-    PROVIDER_FIVE_HOUR("Provider reset-aligned 5 hours", 300);
+    PROVIDER_FIVE_HOUR("Follow the five-hour quota reset", 300);
 
     override fun toString() = label
 }
@@ -350,7 +350,7 @@ class UsagePeriodResolver {
 
     private fun collapseIssues(intervals: List<UsageInterval>, zone: ZoneId): Set<String> =
         intervals.filter { it.start == it.end }.map {
-            "Window on ${it.start.atZone(zone).toLocalDate()} collapses after time-zone adjustment; no usage counted"
+            "On ${it.start.atZone(zone).toLocalDate()}, the start and end times coincide after adjusting for the time zone. No usage was counted for that day."
         }.toSet()
 
     fun dayOf(instant: Instant, definition: TrackerDefinition, zone: ZoneId): LocalDate =

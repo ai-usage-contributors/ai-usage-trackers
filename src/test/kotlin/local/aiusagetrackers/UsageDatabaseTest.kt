@@ -502,8 +502,8 @@ class UsageDatabaseTest {
             val at = Instant.parse("2026-03-29T12:00:00Z")
             val result = database.evaluate(tracker, at, utc)
             assertEquals(0, result.total)
-            assertTrue(result.issues.any { "collapses" in it })
-            assertTrue(PeriodPresentation.describe(result, at).contains("no usage counted"))
+            assertTrue(result.issues.any { "No usage was counted for that day." in it })
+            assertTrue(PeriodPresentation.describe(result, at).contains("No usage was counted for that day."))
             val active = database.evaluate(tracker.copy(selection = DaySelection.ACTIVE), at, utc)
             assertEquals(100, active.total)
             assertEquals(

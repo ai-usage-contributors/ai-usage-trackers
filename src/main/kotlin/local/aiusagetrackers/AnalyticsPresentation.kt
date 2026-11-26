@@ -37,7 +37,7 @@ object AnalyticsPresentation {
                     ) ?: "unknown"
                 }\n"
             )
-            append("• Boundary policy: unverified; ${reading.warning(false) ?: "provider observation available"}\n")
+            append("• Reset schedule unverified. ${reading.warning(false) ?: "provider observation available"}\n")
         }
     }
 
@@ -47,13 +47,13 @@ object AnalyticsPresentation {
         else {
             append("• ${if (isLastKnown(snapshot)) "Last known request" else "Last request"}: ${tokens(request.usage.counters.total)}\n")
             append("• Request reported: ${format.dateTime(request.time, zone, true)} (${zone.id})\n")
-            append("• Request evidence: ${request.usage.evidence}\n")
+            append("• Request data source: ${request.usage.evidence}\n")
             val counters = request.usage.counters
             append("• Request input: ${tokens(counters.input)}\n")
-            append("• Request cache-read tokens (overlap follows provider contract): ${counters.cached?.let(::tokens) ?: "unavailable"}\n")
+            append("• Request cache-read tokens (may already be included in other counts): ${counters.cached?.let(::tokens) ?: "unavailable"}\n")
             append("• Request output: ${tokens(counters.output)}\n")
             append("• Request reasoning output (included in output): ${counters.reasoning?.let(::tokens) ?: "unavailable"}\n")
-            if (snapshot.analytics.simultaneousRequests) append("• Multiple request observations share this timestamp; their order or overlap is unknown\n")
+            if (snapshot.analytics.simultaneousRequests) append("• Several requests have the same recorded time. Their order and overlap are unknown.\n")
         }
     }
 
@@ -89,7 +89,7 @@ object AnalyticsPresentation {
                 }; in ${selection.resetDuration() ?: "unavailable"} (at last collection)\n")
             val state = when {
                 selection.expired -> "expired; awaiting a new provider observation"
-                quota.usage.freshnessUnknown -> "provider observation age unknown; callback capture is not a backend refresh"
+                quota.usage.freshnessUnknown -> "the report shows when it was saved. The age of the quota reading is unknown"
                 selection.stale -> "stale; last observed values"
                 else -> "observed within the last 15 minutes"
             }

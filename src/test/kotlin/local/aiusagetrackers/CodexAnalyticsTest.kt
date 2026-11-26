@@ -142,8 +142,8 @@ class CodexAnalyticsTest {
             assertTrue(it.analytics(now).simultaneousRequests)
             assertNull(it.analytics(now).lastRequest?.usage?.counters?.cached)
             val text = describe(it.analytics(now))
-            assertTrue("their order or overlap is unknown" in text)
-            assertTrue("cache-read tokens (overlap follows provider contract): unavailable" in text)
+            assertTrue("Their order and overlap are unknown" in text)
+            assertTrue("cache-read tokens (may already be included in other counts): unavailable" in text)
         }
     }
 

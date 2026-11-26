@@ -74,7 +74,7 @@ class CodexUsageCollector(private val database: UsageDatabase) {
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            issues += "Source discovery incomplete; imported history retained"
+            issues += "Some log folders couldn’t be checked. Previously imported usage is saved."
         }
     }
 }

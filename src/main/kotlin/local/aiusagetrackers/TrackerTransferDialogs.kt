@@ -82,9 +82,9 @@ class ImportTrackersDialog(
         SettingsHelp.attach(strategy, "Append imported trackers or replace the current draft's tracker list.")
         SettingsHelp.attach(applyDisplay, "Apply the appearance settings included in this file.")
         SettingsHelp.attach(applyGeneral, "Apply imported widget prefixes and carousel preferences without enabling collection.")
-        mappings.values.forEach { SettingsHelp.attach(it, "Bind imported trackers to this local account, or leave them unconfigured.") }
+        mappings.values.forEach { SettingsHelp.attach(it, "Choose a local account for each imported tracker, or leave it unconfigured.") }
         title = "Import Trackers — Preview"
-        setOKButtonText("Import into Draft")
+        setOKButtonText("Import Trackers")
         init()
         strategy.addActionListener { updateSummary() }
         updateSummary()

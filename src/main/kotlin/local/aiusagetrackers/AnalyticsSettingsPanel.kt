@@ -43,7 +43,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
     private val reset = JCheckBox("Show weekly reset")
     private val fiveQuota = JCheckBox("Show 5h quota")
     private val fiveReset = JCheckBox("Show 5h reset")
-    private val reportedPools = JCheckBox("Show reported pools with unknown boundary schemes")
+    private val reportedPools = JCheckBox("Show limits with an unverified reset schedule")
     private val estimate = JCheckBox("Estimate weekly token budget")
     private val fiveEstimate = JCheckBox("Estimate five-hour token budget")
     private val requestPercent = JCheckBox("Show percentage used for Last request")
@@ -87,7 +87,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
             add(control, BorderLayout.CENTER); add(warning, BorderLayout.EAST)
         }
         section("Plan capabilities")
-        row("Quota scheme", planProfile, "Choose the quota limits confirmed for this account.")
+        row("Account quota limits", planProfile, "Choose the quota limits confirmed for this account.")
         row("Other quota pools", reportedPools, "Show quota pools whose reset schedule is not verified.")
         planProfile.addActionListener {
             (planProfile.selectedItem as? QuotaPlanProfile)?.let { lastValidPlan = it }
@@ -251,7 +251,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
         requestFivePercent.isSelected = options.lastRequestFiveHourPercentUsed
         requestMetrics.load(options.lastRequestMetricLayout())
         for ((combo, pin) in listOf(source to options.quotaScope, fiveSource to options.fiveHourScope)) {
-            val choice = ScopeChoice(pin, pin.ifEmpty { "Automatic — newest observation" })
+            val choice = ScopeChoice(pin, pin.ifEmpty { "Automatic — latest reading" })
             updateSettingsChoices(combo, listOf(choice), choice)
         }
         listOf(
@@ -321,7 +321,7 @@ class AnalyticsSettingsPanel(private val snapshot: () -> UsageSnapshot) : Settin
             val selected = (combo.selectedItem as? ScopeChoice)?.id.orEmpty()
             val scopes = data.analytics.quotaObservations.filter { it.usage.windowMinutes == duration }
                 .map(QuotaPresentation::scope).distinct()
-            val choices = listOf(ScopeChoice("", "Automatic — newest observation")) +
+            val choices = listOf(ScopeChoice("", "Automatic — latest reading")) +
                     (scopes + listOfNotNull(selected.takeIf { it.isNotEmpty() })).distinct().sorted().map {
                         ScopeChoice(it, it + if (it !in scopes) " (unavailable)" else "")
                     }

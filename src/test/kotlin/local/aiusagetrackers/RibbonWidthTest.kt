@@ -20,7 +20,7 @@ class RibbonWidthTest {
             ribbon.configure(80, 0, mode, expandToFit = true)
             ribbon.setEntries(listOf(wide, short))
             assertEquals(wide.measuredWidth(), ribbon.preferredSize.width)
-            assertTrue(assertNotNull(ribbon.widthExpansionWarning).contains("80"))
+            assertTrue(assertNotNull(ribbon.widthExpansionWarning).startsWith("The ribbon widened to fit a long value."))
             ribbon.size = ribbon.preferredSize; ribbon.doLayout()
             if (mode == RibbonScrollMode.VERTICAL_STEP) {
                 assertTrue(wide.isVisible)

@@ -247,7 +247,7 @@ private class VendorUsageWidget(private val project: Project, private val vendor
             else resizeState.pending
                 ?: "Open usage details to review outstanding operational warnings and quota availability."
         infoButton.accessibleContext.accessibleName =
-            if (warnings.isEmpty()) "$label Usage Info" else "$label usage warnings: ${warnings.joinToString("; ")}"
+            if (warnings.isEmpty()) "$label Usage Info" else "$label usage warnings, ${warnings.size} ${if (warnings.size == 1) "issue" else "issues"}"
     }
 
     private fun toggleInfo() {

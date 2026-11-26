@@ -25,7 +25,7 @@ data class QuotaBudgetEstimate(
             val lowerLabel = label.lowercase()
             val reason = when {
                 reading.usage.disabled -> "The provider reports this quota pool as disabled"
-                reading.discontinuity -> "Reported usage decreased without an established new $lowerLabel boundary; estimate invalidated"
+                reading.discontinuity -> "The quota percentage dropped and no reset could be confirmed. The token estimate is unavailable."
                 window == null || window.scheduled -> "$label boundary unavailable for this observation"
                 p == null || !p.isFinite() || p < 1 || p > 100 -> "Estimate requires at least 1% reported $lowerLabel usage"
                 tokens == null || tokens <= 0 -> "No positive local $lowerLabel token usage available for this observation"

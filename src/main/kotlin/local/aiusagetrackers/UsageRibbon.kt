@@ -36,8 +36,8 @@ class UsageRibbon(private val nanoTime: () -> Long = System::nanoTime) : JViewpo
     internal val widthExpansionWarning: String?
         get() {
             if (!autoExpand || requestedWidth() <= JBUI.scale(logicalWidth)) return null
-            return "Ribbon automatically widened from ${JBUI.scale(logicalWidth)} to ${requestedWidth()} pixels at the current IDE scale to fit an oversized entry. " +
-                    "Acknowledge to keep this width, or Revert to restore $logicalWidth logical pixels and disable automatic widening."
+            return "The ribbon widened to fit a long value. Acknowledge keeps the new width. " +
+                    "Revert restores the previous width and turns off automatic widening."
         }
     private var speed = 30
     private var scrollMode = RibbonScrollMode.RESTART

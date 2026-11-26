@@ -144,7 +144,7 @@ class DisplayPresentationTest {
         listOf(
             "Visible: 3200000 (3.2M) tokens", "Hidden: 3200000 (3.2M) tokens", "Hidden from status bar", "Incomplete tracker",
             "Last warning-free collection: 2026-11-02 12:34:46", "Earliest recorded usage: 2026-11-01",
-            "Live source homes: 2", "Live log files: 5", "Stored usage events: 12", "synthetic/usage.sqlite",
+            "Usage folders found: 2", "Live log files: 5", "Stored usage events: 12", "synthetic/usage.sqlite",
             "Last completed collection"
         ).forEach { assertTrue(it in info, it) }
         assertTrue(info.lineSequence().filter { it.isNotBlank() }.all { it.startsWith("• ") })
@@ -169,7 +169,7 @@ class DisplayPresentationTest {
         assertFalse("rollout-2026-10-23-test.jsonl" in info)
         assertTrue("Existing summary" in pages.warnings)
         assertTrue("rollout-2026-10-23-test.jsonl — 23/10/2026 — Malformed" in pages.integrity)
-        assertTrue("unknown name.jsonl — date unknown — Session identity" in pages.integrity)
+        assertTrue("unknown name.jsonl — date unknown — Skipped a possible duplicate" in pages.integrity)
     }
 
     @Test

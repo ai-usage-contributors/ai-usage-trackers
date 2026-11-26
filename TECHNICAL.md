@@ -1,6 +1,6 @@
 # AI Usage Trackers — technical reference
 
-This describes implementation version **1.2.0**, reviewed on **2026-11-25**.
+This describes implementation version **1.3.0**.
 Source links identify the implementation; external links explain terminology and
 provider contracts. Historical release notes describe earlier behavior, not
 additional current features.
@@ -159,7 +159,7 @@ The plugin logo uses the supplied Lucide-based chart drawing, packaged as
 padding. Explicit blue strokes (`#3574F0` light, `#6EC5FF` dark) avoid relying on
 inherited CSS colors. The ISC notice is bundled in `licenses/lucide-ISC.txt`.
 See [JetBrains logo requirements](https://plugins.jetbrains.com/docs/intellij/plugin-icon-file.html).
-The current plugin version is **1.2.0**.
+The current plugin version is **1.3.0**.
 
 The package includes third-party notices and capture resources, excluding helper
 tests and Python cache files. Windows is the initial validation environment;
@@ -386,8 +386,8 @@ time. Arithmetic or SQLite sum overflow makes the total unavailable with an issu
 | --- | --- |
 | `Calendar periods` | Minute/hour/day/week/month boundaries in the selected zone; weeks start Monday, months on day 1. Amount N includes the current partial unit and N−1 preceding units by default. Disabling current period selects completed units. |
 | `Elapsed duration` | Exactly N minutes, hours, 24-hour days, or 168-hour weeks. Ends at now or the selected calendar boundary, with an optional earlier-boundary offset. Elapsed months are rejected. |
-| `Provider reset-aligned week (all days)` | One current fixed weekly pool. Uses its selected observation and reset; see section 8.2. Zone affects displayed boundaries. |
-| `Provider reset-aligned 5 hours` | One current five-hour quota window. Requires Amount 5, Unit Hours, and an account scheme with a fixed five-hour reset. Uses the selected five-hour observation; see section 8.2. Zone affects displayed boundaries. |
+| `Follow the weekly quota reset (all days)` | One current fixed weekly pool. Uses its selected observation and reset; see section 8.2. Zone affects displayed boundaries. |
+| `Follow the five-hour quota reset` | One current five-hour quota window. Requires Amount 5, Unit Hours, and an account scheme with a fixed five-hour reset. Uses the selected five-hour observation; see section 8.2. Zone affects displayed boundaries. |
 | Retained legacy schedules | Explicit endpoints, repeating anchors, and non-default daily windows remain readable and retain accounting. The editor locks schedule controls until **Use automatic periods** replaces them with calendar defaults. |
 
 Calendar-day selection can use all days, Monday–Friday, or the latest N dates
@@ -581,7 +581,7 @@ drafts on **Cancel**, with the local preview-pin exception below.
 | **Trackers — Period** | Name; explicit account/token dataset and editable quota-pool selector; amount; unit with equivalence-info button; period type; day selection; current-period inclusion; optional weekly reset alignment for one current calendar day; visibility; minute/hour boundary display; time zone; elapsed ending boundary/offset. Legacy schedule summary/conversion appears where applicable. |
 | **Trackers — Status bar / Period details** | Automatic/Fixed/Ribbon placement, hide label, optional weekly and eligible five-hour shares, metric order, and per-metric prefixes. Period details shows background-resolved intervals and totals, up to 20 intervals in long descriptions. |
 | **Trackers — Last request** | Visibility, label, hide label, weekly and five-hour shares, metric order, and per-metric prefixes. |
-| **Quota — account and plan capabilities** | **Quota account**, vendor-specific **Quota scheme**, and display of other pools with unknown boundary schemes. Switching accounts preserves each account's drafts. |
+| **Quota — account and plan capabilities** | **Quota account**, vendor-specific **Account quota limits**, and display of limits with an unverified reset schedule. Switching accounts preserves each account's drafts. |
 | **Quota — weekly / five-hour** | Independent percentage visibility, text/hide-label controls, reset visibility/label controls, newest-or-pinned source selectors, and availability warning icons. Unsupported capabilities disable controls; temporary missing/stale data does not erase choices. |
 | **Quota — percentage display / token budget estimate** | Independent used/remaining selectors and opt-in illustrative weekly and five-hour budgets. Other reported pools use the weekly selector. |
 | **Appearance — Status bar layout / Ribbon** | Auxiliary metric pinning, observed average/max entry width, configured ribbon width, automatic widening, scroll mode, relevant speed or interval/direction controls, and bulk token percentage display. |
@@ -870,6 +870,11 @@ exact installed-artifact identity and individual subvariants were not independen
 
 ### 12.2 Development checks and evidence
 
+The signed **1.3.0** candidate passed **283 Gradle tests**, packaging,
+configuration verification, and Plugin Verifier 1.411 on IDEA **2026.3**
+(build **263.7307.200**). ZIP Signer verified the signature. See the
+[testing record](docs/native-ui-testing.txt) for archive hashes and pending native acceptance.
+
 The signed **1.2.0** candidate passed **283 Gradle tests**, packaging, and
 configuration verification. IntelliJ and SonarQube reported no findings for the
 consent changes. Plugin Verifier 1.411 reported compatibility with IDEA **2026.3**,
@@ -1021,6 +1026,7 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 
 | Plugin version | Principal change |
 | --- | --- |
+| 1.3.0 | Clearer wording for warnings, Log Integrity findings, tooltips, and settings. Marketplace What's New links to this complete history. |
 | 1.2.0 | Provider reset-aligned five-hour trackers, five-hour quota shares and estimates, metric ordering and prefixes, independent tracker share coloring, reset-paced standalone colors, duration sorting, portable v13–v15 settings transfer in Advanced, and user-initiated consent review in place of the startup dialog. |
 | 1.1.0 | Opt-in daily usage rollover at the selected weekly quota reset, with portable configuration support. |
 | 1.0.1 | Guard AWT pointer queries during display changes; pause automatic advancement and defer hover dismissal while unavailable, then recover automatically. Owner-reported local verification; controlled N10 variants remain unexecuted. |
@@ -1030,41 +1036,41 @@ is recorded in `agent-logs/display-label-final-validation.log`.
 | 0.18.6 | Simplify bounded line termination control flow; cover EOF, newline and line-size boundaries. |
 | 0.18.5 | SonarQube-driven helper extraction, shared literals, injectable dispatchers and connection close delegation; runtime contracts preserved. |
 | 0.18.4 | GitHub CI, repository hygiene, MIT license in package and publishing preparation; runtime unchanged. |
-| 0.1.0 | Initial packaged baseline. |
-| 0.2.0 | Durable history and configurable period trackers; first database schema. |
-| 0.2.1 | Persistent identity provenance, migration backup, and empty handling for DST-collapsed windows. |
-| 0.3.0 | Usage Info, Disclaimers, period starts, date/time preferences, and settings divider. |
-| 0.4.0 | Tracker toolbar, drag reorder, insertion/equivalence hints, and portable configuration. |
-| 0.4.1 | Compact measured widget width, independently scrolling editor, and hover explanations. |
-| 0.4.2 | Separate completed/warning-free timestamps and per-source diagnostics. |
-| 0.4.3 | Exact totals plus two-decimal millions in Usage Info. |
-| 0.4.4 | Configurable tracker limit. |
-| 0.4.5 | Manual Position submenu; subsequently replaced by native IDE placement. |
-| 0.5.0 | Verifiable individual request analytics and weekly quota metadata. |
-| 0.5.1 | Compact optional quota/reset values, custom request label, and scoped quota selection. |
-| 0.5.2 | Native widget ordering, removal of manual replacement controller, and settings-only preview reorder. |
-| 0.6.0 | Minute trackers, independent weekly/five-hour windows, reset-aligned weeks, and token-budget estimation. |
-| 0.6.1 | Token percentage suffixes, quota-goal coloring, and custom font. |
-| 0.6.2 | Hourly goal and shared operational warning indicator. |
-| 0.7.0 | Automatic period UI, shared palette/multipliers, pacing, and separate integrity details. |
-| 0.8.0 | Custom quota/reset labels and compact-display refinements. |
-| 0.9.0 | Inner scrolling ribbon, fixed/ribbon placement, auxiliary pinning, width, and speed. |
-| 0.9.1 | Whole-day reset-progress pacing. |
-| 0.9.2 | Removed trailing “tokens” from weekly estimate suffix. |
-| 0.10.0 | Restart, Bounce, and Continuous modes. |
-| 0.11.0 | Horizontal/Vertical step modes and hover chooser. |
-| 0.12.0 | Persisted per-page issue acknowledgement. |
-| 0.13.0 | Optional automatic ribbon widening. |
-| 0.14.0 | Resize acknowledge/revert popup and persistent width statistics. |
-| 0.15.0 | 160 ms eased transitions in both inner step modes. |
-| 0.16.0 | Tabbed settings, shared/pinnable bottom preview, and coloring master switch. |
-| 0.16.1 | Bordered collapsible settings categories. |
-| 0.16.2 | Context-sensitive rows and acknowledgement-button visibility. |
-| 0.17.0 | Partial weekly-capability/report foundation; superseded by completed integration in 0.18.0. |
-| 0.18.0 | Multi-vendor/account collection, Claude/Antigravity adapters, capture helper, outer carousel, schema 4, and portable v11 bindings. |
-| 0.18.1 | General/Advanced setup layout and null quota-scheme/settings event fixes. |
-| 0.18.2 | Per-setting help columns and vendor-specific inline explanations. |
 | 0.18.3 | Renamed to AI Usage Trackers; neutral source packages/shared classes and artifact naming, retaining installation, persistence and portable-format contracts. |
+| 0.18.2 | Per-setting help columns and vendor-specific inline explanations. |
+| 0.18.1 | General/Advanced setup layout and null quota-scheme/settings event fixes. |
+| 0.18.0 | Multi-vendor/account collection, Claude/Antigravity adapters, capture helper, outer carousel, schema 4, and portable v11 bindings. |
+| 0.17.0 | Partial weekly-capability/report foundation; superseded by completed integration in 0.18.0. |
+| 0.16.2 | Context-sensitive rows and acknowledgement-button visibility. |
+| 0.16.1 | Bordered collapsible settings categories. |
+| 0.16.0 | Tabbed settings, shared/pinnable bottom preview, and coloring master switch. |
+| 0.15.0 | 160 ms eased transitions in both inner step modes. |
+| 0.14.0 | Resize acknowledge/revert popup and persistent width statistics. |
+| 0.13.0 | Optional automatic ribbon widening. |
+| 0.12.0 | Persisted per-page issue acknowledgement. |
+| 0.11.0 | Horizontal/Vertical step modes and hover chooser. |
+| 0.10.0 | Restart, Bounce, and Continuous modes. |
+| 0.9.2 | Removed trailing “tokens” from weekly estimate suffix. |
+| 0.9.1 | Whole-day reset-progress pacing. |
+| 0.9.0 | Inner scrolling ribbon, fixed/ribbon placement, auxiliary pinning, width, and speed. |
+| 0.8.0 | Custom quota/reset labels and compact-display refinements. |
+| 0.7.0 | Automatic period UI, shared palette/multipliers, pacing, and separate integrity details. |
+| 0.6.2 | Hourly goal and shared operational warning indicator. |
+| 0.6.1 | Token percentage suffixes, quota-goal coloring, and custom font. |
+| 0.6.0 | Minute trackers, independent weekly/five-hour windows, reset-aligned weeks, and token-budget estimation. |
+| 0.5.2 | Native widget ordering, removal of manual replacement controller, and settings-only preview reorder. |
+| 0.5.1 | Compact optional quota/reset values, custom request label, and scoped quota selection. |
+| 0.5.0 | Verifiable individual request analytics and weekly quota metadata. |
+| 0.4.5 | Manual Position submenu; subsequently replaced by native IDE placement. |
+| 0.4.4 | Configurable tracker limit. |
+| 0.4.3 | Exact totals plus two-decimal millions in Usage Info. |
+| 0.4.2 | Separate completed/warning-free timestamps and per-source diagnostics. |
+| 0.4.1 | Compact measured widget width, independently scrolling editor, and hover explanations. |
+| 0.4.0 | Tracker toolbar, drag reorder, insertion/equivalence hints, and portable configuration. |
+| 0.3.0 | Usage Info, Disclaimers, period starts, date/time preferences, and settings divider. |
+| 0.2.1 | Persistent identity provenance, migration backup, and empty handling for DST-collapsed windows. |
+| 0.2.0 | Durable history and configurable period trackers; first database schema. |
+| 0.1.0 | Initial packaged baseline. |
 
 
 

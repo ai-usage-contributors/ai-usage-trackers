@@ -218,7 +218,7 @@ internal class UsageMonitor(
                                             throw cancelled
                                         } catch (_: Exception) {
                                             scanIssues.value =
-                                                setOf("Collection failed; persisted readings retained; retry pending")
+                                                setOf("Couldn’t update usage. Showing saved values. The plugin will try again.")
                                         } finally {
                                             importing.value = false
                                         }

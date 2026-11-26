@@ -99,8 +99,8 @@ Choose a period type:
   boundaries. Calendar weeks begin on Monday.
 - **Elapsed duration** counts a rolling period in minutes, hours, days, or weeks,
   such as the last 24 hours.
-- **Provider reset-aligned week (all days)** follows the selected weekly quota reset.
-- **Provider reset-aligned 5 hours** follows the selected five-hour quota reset.
+- **Follow the weekly quota reset (all days)** follows the selected weekly quota reset.
+- **Follow the five-hour quota reset** follows the selected five-hour quota reset.
   Set **Unit** to **Hours** and **Amount** to **5** to see the option on an account
   with a supported five-hour quota scheme.
 
@@ -137,7 +137,7 @@ In **Appearance > Coloring**, **Five-hour tracker colors** gives the five-hour
 share its own duration-based color on trackers with **Color by quota goal**
 enabled. The Appearance option is on by default. Metric dividers use the neutral color.
 
-In **Quota**, choose the account's quota scheme and which percentages and reset
+In **Quota**, choose the account quota limits and which percentages and reset
 times to show. Choose used or remaining separately for the five-hour quota.
 Enable **Five-hour budget** to show estimated tokens beside that percentage.
 The standalone five-hour quota starts with a 20% usage goal in the first reset

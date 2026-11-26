@@ -27,12 +27,12 @@ class IssueAcknowledgementTest {
     @Test fun acknowledgedWarningsStopAlarmingButNewIssuesRemainVisible() {
         val snapshot = UsageSnapshot(
             loading = false, operationalIssues = setOf("old", "new"),
-            integrityIssues = setOf("damaged"), acknowledgedWarnings = setOf("old"),
-            acknowledgedIntegrity = setOf("damaged"))
+            integrityIssues = setOf("Session identity missing; ambiguous copy excluded"), acknowledgedWarnings = setOf("old"),
+            acknowledgedIntegrity = setOf("Session identity missing; ambiguous copy excluded"))
         assertEquals(listOf("new"), WidgetWarnings.messages(snapshot, emptyList()))
         val pages = UsageDetailPages.capture(snapshot, DisplayPreferences(), ZoneOffset.UTC, AnalyticsDisplayOptions())
         assertTrue(pages.warnings.contains("[Acknowledged] old"))
-        assertTrue(pages.integrity.contains("[Acknowledged] damaged"))
+        assertTrue(pages.integrity.contains("[Acknowledged] Skipped a possible duplicate because its session ID was missing."))
         assertTrue("old" !in pages.warningIssues)
         assertTrue("new" in pages.warningIssues)
         assertTrue(pages.integrityFindings.isEmpty())

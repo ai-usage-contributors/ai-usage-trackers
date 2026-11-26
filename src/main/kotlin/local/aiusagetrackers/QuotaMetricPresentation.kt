@@ -31,7 +31,7 @@ data class QuotaMetricPresentation(val budget: BigDecimal?, val explanation: Str
         )
         if (!applicable || !preferences.weeklyPacing || !definition.colorByQuotaGoal ||
             definition.mode != PeriodMode.PROVIDER_WEEK || goal == null) return base
-        val end = reset ?: return base.copy(quotaGoalRatio = null, warnings = base.warnings + "Weekly pacing requires a current reset observation")
+        val end = reset ?: return base.copy(quotaGoalRatio = null, warnings = base.warnings + "Time-based quota colors need a current weekly reset time.")
         val now = evaluatedAt ?: return base.copy(quotaGoalRatio = null)
         if (now >= end || now < end.minusSeconds(604800) || budget == null || budget <= BigDecimal.ZERO) return base.copy(quotaGoalRatio = null)
         val remaining = Duration.between(now, end)
@@ -125,7 +125,7 @@ data class QuotaMetricPresentation(val budget: BigDecimal?, val explanation: Str
             return QuotaMetricPresentation(
                 budget,
                 if (budget == null) "$label percentage unavailable: ${selected.warning(false) ?: estimate?.explanation ?: "no usable token budget estimate"}"
-                else "Approximate share of the selected $label token budget. ${estimate.explanation} ${selected.warning(false).orEmpty()}",
+                else "Approximate share of the $label token budget. Estimate based on local tokens and the reported quota percentage. Missing logs can affect it.${selected.warning(false)?.let { " $it" }.orEmpty()}",
                 selected.stale && budget != null,
                 reading?.usage?.resetsAt?.let(Instant::ofEpochSecond), snapshot.evaluatedAt,
             )

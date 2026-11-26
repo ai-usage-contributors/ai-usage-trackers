@@ -1,5 +1,34 @@
 NATIVE UI TESTING RECORD - GIVEN / WHEN / THEN
-Maintained: 2026-11-25 | Next planned plugin version: 1.2.0
+Maintained: 2026-11-26 | Current candidate: 1.3.0
+
+1.3.0 CANDIDATE — REWORDED PLUGIN TEXT AND RELEASE NOTES
+
+Given a fresh install or an upgrade from 1.2.0 on IDEA 2026.3 with synthetic
+quota and log fixtures, when the conditions in N15 occur, then the widget and
+Usage Info show the revised wording. Acknowledged Log Integrity findings
+remain acknowledged. Plugin details show the 1.3.0 notes and a link to the
+full development history. Replay the existing release scenarios as planned.
+
+Built and signed on 2026-11-26 on Windows for IDEA 2026.3 (IU-263.7307.200).
+Source: 800e21e5d25cb25578f73551ed47e63b2e892ea0 plus local changes.
+SHA256 of the 26 changed source/test/build paths and hashes, sorted by path
+and joined with LF:
+7764F755FA9FD261F94C5707F5B24B4F1F84D59ADB2C10E08C6C0D648386F7FE
+Unsigned ai-usage-trackers-1.3.0.zip SHA256:
+BA2A8166D19B82F8BACBF652495F4673EDDD2C78A83E75E1BA718F456146524B
+Signed ai-usage-trackers-1.3.0-signed.zip SHA256:
+039C44B2282F38E1ACA2F3C88FEDCBEA34281E26E689E9D3B800425C8E66B726
+
+Automated results: 283 Gradle tests passed. Packaging and configuration checks
+passed. Plugin Verifier 1.411 reported Compatible for IU-263.7307.200. IntelliJ
+and SonarQube reported no findings for the release changes. The packaged
+plugin.xml contains only 1.3.0 notes and the development history link. ZIP Signer
+0.1.45 verified the signature against the existing release certificate. The
+signed and unsigned ZIP payloads matched.
+
+Native status: NOT RUN. All scenarios, including N15, are pending. No native
+observations or display/input environment were recorded for this candidate.
+Marketplace check: PENDING.
 
 1.2.0 CANDIDATE — SONARQUBE COMPLEXITY FIXES
 

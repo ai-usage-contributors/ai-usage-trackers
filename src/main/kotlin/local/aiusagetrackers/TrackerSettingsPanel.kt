@@ -232,7 +232,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         fields.section("Period")
         fields.addRow(legacyNotice, replaceLegacy)
         row("Name", name, "Name shown in the tracker list and usage details.")
-        row("Account / token dataset", trackerAccount, "Choose the account whose token usage this tracker counts.")
+        row("Account", trackerAccount, "Choose the account whose token usage this tracker counts.")
         row("Quota pool", trackerPool, "Choose the quota limit that supplies this tracker's provider reset.")
         row(
             "Weekly reset alignment",
@@ -326,7 +326,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         followFocus(fields)
         explain(
             preview,
-            "Resolved intervals and stored token totals for the selected draft. Updates in the background; long previews show the first 20 intervals. Starts are inclusive and ends exclusive."
+            "Preview the time ranges and token totals for this tracker. The preview shows up to 20 ranges. Usage at the start counts. Usage at the end falls outside the range."
         )
         val right = JPanel(BorderLayout()).apply {
             add(JPanel(BorderLayout()).apply {
@@ -427,7 +427,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
                 displayRow(
                     "Average width",
                     JLabel(String.format(Locale.ROOT, "%.1f pixels", widths.average)),
-                    "Running average of full rendered dynamic ribbon entries at their observed IDE scale."
+                    "Average width of recent entries."
                 )
                 displayRow("Max width", JBTextArea("${widths.maximum} pixels — ${widths.maximumValue}").apply {
                     isEditable = false; lineWrap = true; wrapStyleWord = true; isOpaque = false; columns = 36
@@ -889,7 +889,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
             ) else null
         )
         val saver = FileChooserFactory.getInstance().createSaveFileDialog(
-            FileSaverDescriptor(EXPORT_TRACKERS, "Save portable tracker definitions", "json"), this
+            FileSaverDescriptor(EXPORT_TRACKERS, "Save tracker settings", "json"), this
         )
         val file = saver.save("ai-usage-trackers.json") ?: return
         val path = file.file.toPath()
@@ -1129,7 +1129,7 @@ class TrackerSettingsPanel(private val recordedWidths: RibbonWidthStatistics = R
         val previous = list.selectedValue
         if (mode.selectedItem == PeriodMode.PROVIDER_WEEK && previous.mode != PeriodMode.PROVIDER_WEEK && !trackerCapabilities().weekly) {
             loading = true; mode.selectedItem = previous.mode; loading = false
-            mode.toolTipText = "A verified fixed weekly quota binding is required"
+            mode.toolTipText = "Choose a confirmed weekly quota with a fixed reset time."
             return
         }
         loading = true

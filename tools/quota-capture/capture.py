@@ -142,7 +142,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("vendor", choices=("claude", "antigravity"))
     parser.add_argument("directory")
-    parser.add_argument("--stream", action="store_true", help="Read NDJSON step events instead of one status-line JSON object")
+    parser.add_argument("--stream", action="store_true", help="Read one task event per line instead of a single status report.")
     args = parser.parse_args()
     if args.stream:
         while True:

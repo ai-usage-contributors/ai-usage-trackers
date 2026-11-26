@@ -5,7 +5,7 @@
     <description><![CDATA[
         <p>Track local AI token usage in the IntelliJ IDEA status bar with persistent history
         and configurable trackers. Start with Today and This week, or choose calendar periods,
-        rolling durations and supported provider reset-aligned weeks.</p>
+        rolling durations and periods that follow supported quota resets.</p>
         <ul>
             <li>Read Codex logs, with experimental Claude assistant-log and Antigravity capture support.</li>
             <li>Keep accounts separate and switch between enabled vendors or rotate them in a carousel.</li>
@@ -14,8 +14,7 @@
             <li>Review usage details and warnings, and import or export tracker settings.</li>
         </ul>
         <p>Reads local files without model calls or telemetry. Coverage depends on the source;
-        Claude and Antigravity support is experimental: synthetic tests pass, but validation
-        by contributors with subscriptions is required before verified support can be claimed.
+        Claude and Antigravity support is experimental and still needs testing with real subscriptions.
         Both require source configuration.</p>
         <p><a href="https://github.com/ai-usage-contributors/ai-usage-trackers#readme">Getting started</a>
         · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/issues">Report an issue</a>
@@ -23,18 +22,9 @@
         · <a href="https://github.com/ai-usage-contributors/ai-usage-trackers/blob/master/PRIVACY.md">Privacy Policy</a></p>
     ]]></description>
     <change-notes><![CDATA[
-        <p>1.2.0: Show five-hour quota shares on short trackers and Last request, customize metric order
-        and prefixes, and display five-hour quota used or remaining with optional estimated tokens.
-        Color tracker shares independently, pace the reported five-hour quota by reset progress,
-        and track the current provider reset-aligned five-hour window. Review the usage
-        agreement from the status bar or Settings without interrupting IDE startup.</p>
-        <p>1.1.0: A current-day tracker can also restart at the selected weekly quota reset.</p>
-        <p>1.0.1: Recover safely when monitor changes temporarily prevent pointer detection.
-        Automatic movement pauses and hover popups remain stable until detection recovers.</p>
-        <p>1.0.0: Track local AI usage with configurable status-bar trackers,
-        persistent history, vendor/account selection, quota displays where available,
-        appearance controls and configuration import/export. Claude and Antigravity support
-        is experimental and awaits validation by contributors with subscriptions.</p>
+        <p><strong>1.3.0</strong></p>
+        <p>Clearer wording in warnings, Log Integrity reports, tooltips, and settings.</p>
+        <p><a href="https://github.com/ai-usage-contributors/ai-usage-trackers/blob/master/TECHNICAL.md#13-development-history">Full development history</a></p>
     ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">

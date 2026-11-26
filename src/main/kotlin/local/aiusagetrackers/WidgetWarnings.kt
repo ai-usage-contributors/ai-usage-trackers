@@ -17,7 +17,7 @@ object WidgetWarnings {
         addAll(snapshot.collection.operationalIssues)
         addAll(snapshot.analytics.operationalIssues)
         snapshot.trackers.forEach { addAll(it.issues) }
-        if (snapshot.analytics.simultaneousRequests) add("Multiple request observations share a timestamp; order or overlap is unknown")
+        if (snapshot.analytics.simultaneousRequests) add("Several requests have the same recorded time. Their order and overlap are unknown.")
         values.forEach { value ->
             addAll(value.warnings)
             if (value.warnings.isEmpty() && value.state in setOf(StatusValueState.STALE, StatusValueState.UNAVAILABLE, StatusValueState.EXPIRED)) {

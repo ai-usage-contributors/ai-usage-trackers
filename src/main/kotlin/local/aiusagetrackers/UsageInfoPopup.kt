@@ -64,11 +64,11 @@ class UsageInfoPanel(
         add(JPanel(BorderLayout()).apply {
             add(JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(4), 0)).apply {
                 add(JButton("Update View").apply {
-                    toolTipText = "Show the latest available collected snapshot"
+                    toolTipText = "Show the latest results already collected."
                     addActionListener { updateView() }
                 })
                 add(acknowledgeButton.apply {
-                    toolTipText = "Mark this page's outstanding findings as acknowledged"
+                    toolTipText = "Mark all issues on this page as reviewed."
                     addActionListener { acknowledgeCurrentPage() }
                 })
                 add(JButton("Disclaimers").apply { addActionListener { disclaimers() } })

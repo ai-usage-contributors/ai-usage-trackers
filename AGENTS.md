@@ -7,7 +7,6 @@
   editable controls, and provide equivalent accessible descriptions.
 - Read IMPLEMENTATION_HANDOFF.txt before implementation.
 - Work in this repository; keep the upstream Codex Usage checkout unchanged.
-- Verify existing code references with tool output; verify line numbers before citing them.
 - Keep README.md and TECHNICAL.md current when behavior, requirements, settings,
   limitations, or versions change. Reconcile existing text; do not append repeated
   explanations or leave superseded behavior presented as current.
@@ -21,6 +20,8 @@
   interaction/animation details (including exact timings), and database semantics.
   Keep numbered sections, an up-to-date table of contents, a Definitions section,
   and a concise development history listing produced versions and their changes.
+  Sort development history entries by numeric major, minor, then patch version in
+  descending order, with the newest version first and the oldest version last.
   Highlight technical/domain terms (such as agent, plan, account, and usage) with
   backticks or equivalent styling, define them, and link authoritative external
   sources in definitions where applicable. Avoid rambling and repetition; use
@@ -57,11 +58,10 @@
   Claude and Antigravity experimental until the documented subscriber checks pass.
 - Performance testing focuses on underlying usage collection and calculation,
   not native UI behavior. Defer performance measurements when the user requests it.
-- Before reporting implementation complete: run the full Gradle test suite, buildPlugin,
-  verifyPluginConfiguration, required compatibility verification, and IntelliJ inspections on changed
-  supported source/tests/build files. Resolve task-related findings.
-- Report missing validation or unresolved task-related issues prominently as
-  WARNING: Outstanding concerns.
-- State whether additional local testing is needed. If needed, use LOCAL TESTING REQUIRED and
-  list prerequisites, exact commands or manual steps, and expected results.
+- Before reporting implementation complete, run the full Gradle test suite, buildPlugin,
+  verifyPluginConfiguration, and required compatibility verification.
+- Keep Marketplace What's New (`<change-notes>` in `src/main/resources/META-INF/plugin.xml`)
+  limited to the latest minor release and any subsequent bugfix releases in that minor series.
+  Remove the previous series when a new minor release begins. Link to the full development
+  history in TECHNICAL.md.
 - Do not publish to Marketplace, push, or create commits unless requested.

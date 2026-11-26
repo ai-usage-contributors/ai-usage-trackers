@@ -163,14 +163,14 @@ data class QuotaSelection(
     }
 
     fun warning(reset: Boolean): String? = when {
-        refreshedAt == null -> "No completed background data refresh is available."
-        reading == null -> "No ${windowLabel()} quota observation is available for the selected scope."
+        refreshedAt == null -> "Usage hasn’t finished updating yet."
+        reading == null -> "No ${windowLabel()} quota reading for the selected source."
         reading.usage.disabled -> "The provider reports this quota pool as disabled."
-        expired -> "The observed ${windowLabel()} reset has passed. Awaiting a new provider observation."
+        expired -> "The ${windowLabel()} reset has passed. Waiting for a new quota reading."
         reset && reading.usage.resetsAt == null -> "The logs do not report a ${windowLabel()} reset timestamp."
         !reset && reading.usage.usedPercent == null -> "The logs do not report a ${windowLabel()} quota percentage."
-        reading.usage.freshnessUnknown -> "Provider observation age is unknown; callback capture time does not establish freshness."
-        stale -> "The provider observation is over 15 minutes old; displayed data is last observed."
+        reading.usage.freshnessUnknown -> "The report shows when it was saved. The age of the quota reading is unknown."
+        stale -> "Showing the last quota reading. It’s over 15 minutes old."
         else -> null
     }
 

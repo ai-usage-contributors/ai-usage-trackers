@@ -44,7 +44,7 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
     private val alias = JTextField()
     private val locations = JTextArea(3, 40)
     private val capture = JTextField()
-    private val verified = JCheckBox("I verified these sources belong to this account")
+    private val verified = JCheckBox("Confirm these files belong to this account")
     private val status = JLabel()
     private val carousel = JCheckBox("Multi-vendor carousel")
     private val members = UsageVendor.entries.associateWith { JCheckBox(it.toString()).apply { putClientProperty("html.disable", true) } }
@@ -127,7 +127,7 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
             addActionListener { chooseCapture() }
         }, BorderLayout.EAST)
         advanced.addRow(captureLabel, captureInput)
-        advanced.addRow(JLabel("Source attribution"), verified)
+        advanced.addRow(JLabel("Confirm usage files"), verified)
         advanced.addRow(JLabel("Status"), status)
         advanced.addRow(JLabel("Trackers"), JButton("Create default trackers for this account").apply {
             SettingsHelp.attach(this, "Create starter trackers if this account has none.")
@@ -208,7 +208,7 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         capture.text = path.toString()
     }
     private fun refreshVendorHelp() {
-        val notice = if (vendor.experimental) "Experimental support. Synthetic tests pass, but contributors with a subscription must validate actual usage and quotas before verified support can be claimed. " else ""
+        val notice = if (vendor.experimental) "Experimental support. Usage and quotas still need testing with real subscriptions. " else ""
         SettingsHelp.detail(sourceInput, notice + when (vendor) {
             UsageVendor.CODEX -> "Use one Codex home per line, containing sessions and archived_sessions. Examples: C:\\Users\\Alex\\.codex or /home/alex/.codex. The original account keeps automatic discovery; additional accounts need explicit, separate homes."
             UsageVendor.CLAUDE -> "Choose this account's native usage JSONL files or projects folder, including subagents. Examples: C:\\Users\\Alex\\.claude\\projects or /home/alex/.claude/projects. These logs supply tokens; quota reports use optional capture separately."
@@ -220,7 +220,7 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         })
         SettingsHelp.detail(setup, notice + when (vendor) {
             UsageVendor.CODEX -> "No capture helper is needed. Keep automatic discovery for the original Codex account, or configure explicit home folders for additional accounts. Verify each source belongs to the intended account."
-            UsageVendor.CLAUDE -> "Export the helper, then manually compose it with Claude's documented status-line command, preserving any existing renderer. Token history comes from the usage logs above. Callbacks are activity-driven, not live idle quota polling. Full commands are in the exported README."
+            UsageVendor.CLAUDE -> "Export the helper, then manually compose it with Claude's documented status-line command, preserving any existing renderer. Token history comes from the usage logs above. Quota reports update when Claude runs its status-line command. Full commands are in the exported README."
             UsageVendor.ANTIGRAVITY -> "Export the helper for optional status-line quota capture. For token steps, capture stream-json from an already intended headless task; do not run a model just to collect usage. Preserve any existing status renderer. Full commands and coverage limits are in the exported README."
         })
         SettingsHelp.detail(export, "Copy capture.py and README.txt into an empty folder, for example C:\\UsageTools or /home/alex/usage-tools. Python 3.10+ and a local filesystem supporting hard links are required. Export never edits vendor configuration or starts an agent.")
@@ -272,8 +272,8 @@ class ProviderSettingsPanel(private val changed: () -> Unit, private val addDefa
         updateSettingsChoices(account, draft.profiles.filter { it.vendor == vendor }.map { AccountChoice(it.id, it.vendor.supportLabel(it.alias)) }, draft.account(vendor)?.let { AccountChoice(it.id, it.vendor.supportLabel(it.alias)) })
         displayed.repaint()
         displayed.isEnabled = !draft.display.carousel
-        status.text = if (draft.account(vendor)?.configured() == true) "Sources mapped; inspect Usage Info for import and quota availability" else "Setup/verified account mapping required"
-        if (vendor.experimental) status.text = "Experimental — ${if (draft.account(vendor)?.configured() == true) "sources mapped" else "setup required"}; subscription validation pending"
+        status.text = if (draft.account(vendor)?.configured() == true) "Sources configured. Check Usage Info for import results." else "Add usage sources and confirm they belong to this account."
+        if (vendor.experimental) status.text = "Experimental — ${if (draft.account(vendor)?.configured() == true) "sources configured" else "setup required"}; subscription validation pending"
         carousel.isSelected = draft.display.carousel
         sourceLabel.text = when (vendor) {
             UsageVendor.CODEX -> "Codex home folders"

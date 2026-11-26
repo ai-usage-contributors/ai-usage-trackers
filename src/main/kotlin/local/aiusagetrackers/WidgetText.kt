@@ -418,7 +418,7 @@ object UsageInfoText {
                 } ?: "none"
             }\n")
         append(
-            "• Snapshot evaluated: ${
+            "• Totals calculated: ${
                 if (snapshot.evaluatedAt == Instant.EPOCH) "not yet" else format.dateTime(
                     snapshot.evaluatedAt,
                     systemZone
@@ -434,7 +434,7 @@ object UsageInfoText {
                     )
                 } ?: "none"
             }\n")
-        append("• Live source homes: ${snapshot.collection.homes}\n")
+        append("• Usage folders found: ${snapshot.collection.homes}\n")
         append("• Live log files: ${snapshot.collection.files}\n")
         append("• Stored usage events: ${snapshot.storedEvents}\n")
         append("• Database: ${snapshot.databasePath.ifBlank { "not yet available" }}\n")
